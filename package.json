@@ -46,6 +46,12 @@
     "prepublishOnly": "node -e \"console.log('✅ Ready to publish snayu')\""
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "express": "^4.18.0",
+    "open": "^10.0.0",
+    "zod": "^3.0.0"
+  },
+  "optionalDependencies": {
     "@aws-sdk/client-cloudwatch": "^3.1045.0",
     "@aws-sdk/client-cloudwatch-logs": "^3.0.0",
     "@aws-sdk/client-dynamodb": "^3.0.0",
@@ -53,10 +59,6 @@
     "@aws-sdk/credential-providers": "^3.0.0",
     "@aws-sdk/lib-dynamodb": "^3.0.0",
     "@elastic/elasticsearch": "^8.0.0",
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "express": "^4.18.0",
-    "open": "^10.0.0",
-    "pg": "^8.0.0",
-    "zod": "^3.0.0"
+    "pg": "^8.0.0"
   }
 }
