@@ -17,21 +17,40 @@ But it's more than a connector. Snayu includes a **no-code agent builder** with 
 ### 1. Install
 
 ```bash
-cd connector
-npm install
+# Install from GitHub
+npm install -g arijitkb22/snayu
+
+# Or clone and link locally
+git clone https://github.com/arijitkb22/snayu.git
+cd snayu && npm install && npm link
 ```
 
 ### 2. Start the Web Dashboard
 
 ```bash
-npm start
+snayu
+# or: npm start (if cloned)
 ```
 
 Opens at **http://localhost:3456** — configure connections, install agents, manage everything.
 
 ### 3. Connect to Your IDE
 
-Copy `mcp.json` to your project's `.vscode/mcp.json`:
+Add to your project's `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "snayu": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["arijitkb22/snayu", "mcp"]
+    }
+  }
+}
+```
+
+Or if installed globally / cloned locally:
 
 ```json
 {
@@ -39,7 +58,7 @@ Copy `mcp.json` to your project's `.vscode/mcp.json`:
     "snayu": {
       "type": "stdio",
       "command": "node",
-      "args": ["/path/to/connector/src/mcp/server.js"]
+      "args": ["/path/to/snayu/src/mcp/server.js"]
     }
   }
 }
@@ -123,17 +142,24 @@ Every Snayu installation has a **global wiki** (`wiki/`) — 7 structured pages 
 
 ### Per-Repo Knowledge Wiki
 
-Every GitHub repo gets its own wiki (`wiki/repos/<owner>__<repo>/`) that the **PR Review agent** incrementally builds:
+Every GitHub repo gets its own wiki that the **PR Review agent** incrementally builds. Wikis can live **locally in your repo** (`.snayu/wiki/`) or centrally in Snayu's install directory.
 
-| Page | What It Captures |
-|------|-----------------|
-| `code-structure` | Codebase map, tech stack, key files, patterns |
-| `pr-reviews` | Accumulated insights from past PR reviews |
-| `risk-map` | Risky/volatile areas with data-driven risk scores |
-| `standards` | Coding conventions learned from reviews + docs |
-| `changelog` | Notable changes tracked over time |
+#### Local Wiki (Recommended)
 
-**Tools:** `repo_wiki_init`, `repo_wiki_read`, `repo_wiki_write`, `repo_wiki_search`, `repo_wiki_status`, `repo_wiki_context`, `repo_wiki_list`
+```bash
+# Agent creates .snayu/wiki/ in your repo
+# Commit it — your team's AI agents instantly get context
+.snayu/
+├── README.md           # Why this exists
+└── wiki/
+    ├── code-structure.md
+    ├── pr-reviews.md
+    ├── risk-map.md
+    ├── standards.md
+    └── changelog.md
+```
+
+**Tools:** `repo_wiki_init_local`, `repo_wiki_init`, `repo_wiki_read`, `repo_wiki_write`, `repo_wiki_search`, `repo_wiki_status`, `repo_wiki_context`, `repo_wiki_list`
 
 ### How Knowledge Compounds
 
