@@ -248,6 +248,30 @@
     @media (max-width: 500px) {
       .stats-grid { grid-template-columns: 1fr 1fr; }
     }
+
+    /* ── Tour ────────────────────────────────────────────────────── */
+    .tour-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(2px); z-index: 9998; }
+    .tour-highlight { position: absolute; z-index: 9999; border-radius: var(--radius); box-shadow: 0 0 0 4px var(--accent), 0 0 24px rgba(124,106,247,.4); pointer-events: none; transition: all .3s ease; }
+    .tour-card { position: absolute; z-index: 10000; background: var(--surface); border: 1px solid var(--accent); border-radius: var(--radius-lg); padding: 24px 28px; max-width: 380px; box-shadow: 0 12px 48px rgba(0,0,0,.5); animation: tourIn .25s ease; }
+    @keyframes tourIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .tour-card h3 { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .tour-card h3 .step-num { background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
+    .tour-card p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-top: 6px; }
+    .tour-actions { display: flex; gap: 10px; margin-top: 16px; align-items: center; }
+    .tour-actions .tour-progress { flex: 1; font-size: 11px; color: var(--text-tertiary); }
+    .tour-btn { padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; }
+    .tour-btn-pri { background: var(--accent); color: #fff; }
+    .tour-btn-pri:hover { background: var(--accent-hover); }
+    .tour-btn-sec { background: var(--surface3); color: var(--text-secondary); }
+    .tour-btn-skip { background: none; color: var(--text-tertiary); font-size: 11px; cursor: pointer; border: none; }
+    .welcome-overlay { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.7); backdrop-filter: blur(4px); }
+    .welcome-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 40px; max-width: 500px; width: 90%; text-align: center; box-shadow: var(--shadow-lg); animation: tourIn .3s ease; }
+    .welcome-card h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .welcome-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+    .welcome-steps { text-align: left; margin: 20px 0; padding: 16px 20px; background: var(--surface2); border-radius: var(--radius); }
+    .welcome-step { display: flex; gap: 12px; padding: 7px 0; font-size: 13px; color: var(--text-secondary); }
+    .welcome-step .ws-n { color: var(--accent); font-weight: 700; min-width: 18px; }
+    .welcome-btns { display: flex; gap: 12px; justify-content: center; margin-top: 24px; }
   </style>
 </head>
 <body>
@@ -295,6 +319,13 @@
       <div class="nav-item" data-page="builder" onclick="navigate('builder')">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
         Agent Builder
+      </div>
+    </nav>
+    <nav class="nav-group">
+      <div class="nav-label">Help</div>
+      <div class="nav-item" onclick="startTour()">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Quick Start Guide
       </div>
     </nav>
     <div class="sidebar-footer"><div class="footer-dot"></div><p>Running on port 3456</p></div>
@@ -1397,7 +1428,154 @@
     document.getElementById('prompt-modal').addEventListener('mousedown', (e) => { if (e.target.id === 'prompt-modal') closePromptModal(); });
     try { catalog = await api('/catalog'); } catch (_) { catalog = {}; }
     navigate('dashboard');
+    // Show welcome on first visit
+    if (!localStorage.getItem('snayu-toured')) showWelcome();
   })();
+
+  // ─── Guided Tour ──────────────────────────────────────────────────────────
+  const TOUR_STEPS = [
+    { target: '.nav-item[data-page="services"]', title: 'Browse Services', desc: 'Start here — browse 25+ supported services (PostgreSQL, AWS, Slack, GitHub, etc). Click any service to connect it with your credentials.', nav: 'dashboard' },
+    { target: '.nav-item[data-page="connections"]', title: 'Manage Connections', desc: 'View all your active connections. Test, edit, or remove them anytime. Each connection creates MCP tools that your AI agent can use.', nav: 'dashboard' },
+    { target: '.nav-item[data-page="agents"]', title: 'Get Your MCP Config', desc: 'Copy the ready-made config for your IDE — VS Code, Cursor, Claude Desktop, or Windsurf. Paste it, restart, and all tools are live.', nav: 'dashboard' },
+    { target: '.nav-item[data-page="onboard"]', title: 'Agent Registry', desc: 'For developers: register your own MCP agent here. Its tools auto-appear for all Snayu users — zero setup on their end.', nav: 'dashboard' },
+    { target: '.nav-item[data-page="tools"]', title: 'Active Tools', desc: 'See every tool currently exposed to your AI agents. This updates live as you add connections and register agents.', nav: 'dashboard' },
+    { target: '.nav-item[data-page="builder"]', title: 'Agent Builder', desc: 'Build custom AI agents with no code. Pick tools, write a system prompt, and deploy — your agent becomes available via the snayu dispatcher.', nav: 'dashboard' },
+  ];
+
+  let tourStep = 0;
+  let tourActive = false;
+
+  function showWelcome() {
+    const w = document.createElement('div');
+    w.className = 'welcome-overlay';
+    w.id = 'welcome-overlay';
+    w.innerHTML = `
+      <div class="welcome-card">
+        <div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 7v4m0 0-5.5 6M12 11l5.5 6"/></svg>
+        </div>
+        <h2>Welcome to Snayu ⚡</h2>
+        <p>The nervous system for your AI agents.<br>Connect your services once, use them from any IDE.</p>
+        <div class="welcome-steps">
+          <div class="welcome-step"><span class="ws-n">1</span> Connect services (PostgreSQL, AWS, Slack, etc.)</div>
+          <div class="welcome-step"><span class="ws-n">2</span> Copy MCP config into your IDE</div>
+          <div class="welcome-step"><span class="ws-n">3</span> All tools are live in Copilot, Claude, Cursor</div>
+          <div class="welcome-step"><span class="ws-n">4</span> Use 16 pre-built agents or build your own</div>
+        </div>
+        <div class="welcome-btns">
+          <button class="tour-btn tour-btn-sec" onclick="dismissWelcome()">Skip</button>
+          <button class="tour-btn tour-btn-pri" onclick="dismissWelcome(); startTour()">🚀 Take the Tour</button>
+        </div>
+      </div>`;
+    document.body.appendChild(w);
+  }
+
+  function dismissWelcome() {
+    const el = document.getElementById('welcome-overlay');
+    if (el) el.remove();
+    localStorage.setItem('snayu-toured', '1');
+  }
+
+  function startTour() {
+    dismissWelcome();
+    tourStep = 0;
+    tourActive = true;
+    // Add backdrop
+    const bd = document.createElement('div');
+    bd.className = 'tour-backdrop';
+    bd.id = 'tour-backdrop';
+    document.body.appendChild(bd);
+    // Add highlight
+    const hl = document.createElement('div');
+    hl.className = 'tour-highlight';
+    hl.id = 'tour-highlight';
+    document.body.appendChild(hl);
+    // Add card
+    const card = document.createElement('div');
+    card.className = 'tour-card';
+    card.id = 'tour-card';
+    document.body.appendChild(card);
+    showTourStep();
+  }
+
+  function showTourStep() {
+    const step = TOUR_STEPS[tourStep];
+    if (!step) return endTour();
+    if (step.nav) navigate(step.nav);
+    
+    requestAnimationFrame(() => {
+      const el = document.querySelector(step.target);
+      if (!el) return endTour();
+      const r = el.getBoundingClientRect();
+      
+      // Highlight
+      const hl = document.getElementById('tour-highlight');
+      hl.style.top = (r.top - 4) + 'px';
+      hl.style.left = (r.left - 4) + 'px';
+      hl.style.width = (r.width + 8) + 'px';
+      hl.style.height = (r.height + 8) + 'px';
+      
+      // Make target clickable above backdrop
+      el.style.position = 'relative';
+      el.style.zIndex = '9999';
+      
+      // Card
+      const card = document.getElementById('tour-card');
+      const isLast = tourStep === TOUR_STEPS.length - 1;
+      card.innerHTML = `
+        <h3><span class="step-num">${tourStep + 1}</span> ${step.title}</h3>
+        <p>${step.desc}</p>
+        <div class="tour-actions">
+          <span class="tour-progress">${tourStep + 1} of ${TOUR_STEPS.length}</span>
+          <button class="tour-btn tour-btn-skip" onclick="endTour()">Skip tour</button>
+          ${tourStep > 0 ? '<button class="tour-btn tour-btn-sec" onclick="prevTourStep()">Back</button>' : ''}
+          <button class="tour-btn tour-btn-pri" onclick="${isLast ? 'endTour()' : 'nextTourStep()'}">
+            ${isLast ? '✅ Finish' : 'Next →'}
+          </button>
+        </div>`;
+      card.style.top = (r.bottom + 12) + 'px';
+      card.style.left = (r.left + 8) + 'px';
+      
+      // If card goes off screen bottom, position above
+      requestAnimationFrame(() => {
+        const cr = card.getBoundingClientRect();
+        if (cr.bottom > window.innerHeight - 20) {
+          card.style.top = (r.top - cr.height - 12) + 'px';
+        }
+      });
+    });
+  }
+
+  function nextTourStep() {
+    clearTourHighlightZ();
+    tourStep++;
+    showTourStep();
+  }
+
+  function prevTourStep() {
+    clearTourHighlightZ();
+    tourStep--;
+    showTourStep();
+  }
+
+  function clearTourHighlightZ() {
+    const step = TOUR_STEPS[tourStep];
+    if (step) {
+      const el = document.querySelector(step.target);
+      if (el) { el.style.position = ''; el.style.zIndex = ''; }
+    }
+  }
+
+  function endTour() {
+    clearTourHighlightZ();
+    tourActive = false;
+    localStorage.setItem('snayu-toured', '1');
+    ['tour-backdrop', 'tour-highlight', 'tour-card'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
+    navigate('dashboard');
+  }
 </script>
 </body>
 </html>
