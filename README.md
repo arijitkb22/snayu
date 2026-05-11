@@ -17,6 +17,10 @@ But it's more than a connector. Snayu includes a **no-code agent builder** with 
 ### 1. Install
 
 ```bash
+# From npm (fastest)
+npm install @arijitkb22/snayu
+
+# Or clone the repo
 git clone https://github.com/arijitkb22/snayu.git
 cd snayu
 npm install

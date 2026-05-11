@@ -1,5 +1,5 @@
 {
-  "name": "snayu",
+  "name": "@arijitkb22/snayu",
   "version": "1.0.0",
   "description": "Snayu (স্নায়ু) — the nervous system for your AI agents. Connect once, use everywhere. A single MCP server that bridges all your services to all your AI agents.",
   "type": "module",
