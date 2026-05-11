@@ -17,40 +17,22 @@ But it's more than a connector. Snayu includes a **no-code agent builder** with 
 ### 1. Install
 
 ```bash
-# Install from GitHub
-npm install -g github:arijitkb22/snayu
-
-# Or clone and link locally (recommended)
 git clone https://github.com/arijitkb22/snayu.git
-cd snayu && npm install && npm link
+cd snayu
+npm install
 ```
 
 ### 2. Start the Web Dashboard
 
 ```bash
-snayu
-# or: npm start (if cloned)
+npm start
 ```
 
 Opens at **http://localhost:3456** — configure connections, install agents, manage everything.
 
 ### 3. Connect to Your IDE
 
-Add to your project's `.vscode/mcp.json`:
-
-```json
-{
-  "servers": {
-    "snayu": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["arijitkb22/snayu", "mcp"]
-    }
-  }
-}
-```
-
-Or if installed globally / cloned locally:
+Add to your project's `.vscode/mcp.json` (update the path to where you cloned snayu):
 
 ```json
 {
