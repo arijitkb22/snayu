@@ -1434,12 +1434,54 @@
 
   // ─── Guided Tour ──────────────────────────────────────────────────────────
   const TOUR_STEPS = [
-    { target: '.nav-item[data-page="services"]', title: 'Browse Services', desc: 'Start here — browse 25+ supported services (PostgreSQL, AWS, Slack, GitHub, etc). Click any service to connect it with your credentials.', nav: 'dashboard' },
-    { target: '.nav-item[data-page="connections"]', title: 'Manage Connections', desc: 'View all your active connections. Test, edit, or remove them anytime. Each connection creates MCP tools that your AI agent can use.', nav: 'dashboard' },
-    { target: '.nav-item[data-page="agents"]', title: 'Get Your MCP Config', desc: 'Copy the ready-made config for your IDE — VS Code, Cursor, Claude Desktop, or Windsurf. Paste it, restart, and all tools are live.', nav: 'dashboard' },
-    { target: '.nav-item[data-page="onboard"]', title: 'Agent Registry', desc: 'For developers: register your own MCP agent here. Its tools auto-appear for all Snayu users — zero setup on their end.', nav: 'dashboard' },
-    { target: '.nav-item[data-page="tools"]', title: 'Active Tools', desc: 'See every tool currently exposed to your AI agents. This updates live as you add connections and register agents.', nav: 'dashboard' },
-    { target: '.nav-item[data-page="builder"]', title: 'Agent Builder', desc: 'Build custom AI agents with no code. Pick tools, write a system prompt, and deploy — your agent becomes available via the snayu dispatcher.', nav: 'dashboard' },
+    // Step 1: Dashboard overview
+    { 
+      target: '#page-dashboard .stats-grid', nav: 'dashboard',
+      title: '📊 Dashboard — Your Command Center',
+      desc: 'This is your home base. It shows how many services are connected, active tools, and onboarded agents at a glance. Everything starts here.'
+    },
+    // Step 2: Connect a service
+    {
+      target: '#page-services .page-header', nav: 'services',
+      title: '🔌 Step 1: Connect a Service',
+      desc: 'Browse 25+ services — PostgreSQL, AWS CloudWatch, Slack, GitHub, Jira, and more. <strong>Click any service card</strong> to enter your credentials and connect. This is the first thing you should do.'
+    },
+    // Step 3: See your connections
+    {
+      target: '#page-connections .page-header', nav: 'connections',
+      title: '🔗 Your Active Connections',
+      desc: 'Once connected, your services appear here. You can <strong>test, edit, or remove</strong> connections anytime. Each connection creates MCP tools that your AI agent can call.'
+    },
+    // Step 4: MCP Setup — connect to IDE
+    {
+      target: '#page-agents .page-header', nav: 'agents',
+      title: '⚙️ Step 2: Add MCP Config to Your IDE',
+      desc: 'Copy the ready-made config for <strong>VS Code, Cursor, Claude Desktop, or Windsurf</strong>. Paste it into your IDE\'s MCP settings, restart the agent — all your tools are instantly live.'
+    },
+    // Step 5: Active tools
+    {
+      target: '#page-tools .page-header', nav: 'tools',
+      title: '🛠️ Step 3: Verify Your Tools',
+      desc: 'This page shows <strong>every tool</strong> currently exposed to your AI agent. After connecting a service, check here to confirm the tools appeared. Try typing <code style="background:var(--surface3);padding:1px 5px;border-radius:4px;font-size:12px;">snayu</code> in your IDE to see available agents.'
+    },
+    // Step 6: Test with an agent
+    {
+      target: '#page-builder .page-header', nav: 'builder',
+      title: '🤖 Step 4: Try an Agent',
+      desc: 'Snayu comes with <strong>16 pre-built agents</strong> — PR Review, Infrastructure Investigator, Incident Response, and more. Install one from the templates below, then test it in your IDE:<br><br><code style="background:var(--surface3);padding:3px 8px;border-radius:4px;font-size:12px;">snayu pr_review_agent — review PR #42</code>'
+    },
+    // Step 7: Build your own
+    {
+      target: '#page-builder .page-header', nav: 'builder',
+      title: '🏗️ Step 5: Build Your Own Agent',
+      desc: 'Click <strong>"+ Create Agent"</strong> to build a custom agent with no code. Pick tools from your connections, write a system prompt that defines behavior, and deploy. Your agent becomes available via the <code style="background:var(--surface3);padding:1px 5px;border-radius:4px;font-size:12px;">snayu</code> dispatcher.'
+    },
+    // Step 8: Agent Registry
+    {
+      target: '#page-onboard .page-header', nav: 'onboard',
+      title: '📦 Agent Registry — Share With Your Team',
+      desc: 'For developers: register your own MCP agent here with an endpoint + tools manifest. Once registered, <strong>its tools auto-appear for all Snayu users</strong> — zero setup on their end. Great for team-wide agent sharing.'
+    },
   ];
 
   let tourStep = 0;
@@ -1455,16 +1497,16 @@
           <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 7v4m0 0-5.5 6M12 11l5.5 6"/></svg>
         </div>
         <h2>Welcome to Snayu ⚡</h2>
-        <p>The nervous system for your AI agents.<br>Connect your services once, use them from any IDE.</p>
+        <p>The nervous system for your AI agents.<br>Let's get you connected in 5 minutes.</p>
         <div class="welcome-steps">
-          <div class="welcome-step"><span class="ws-n">1</span> Connect services (PostgreSQL, AWS, Slack, etc.)</div>
+          <div class="welcome-step"><span class="ws-n">1</span> Connect a service (PostgreSQL, AWS, Slack…)</div>
           <div class="welcome-step"><span class="ws-n">2</span> Copy MCP config into your IDE</div>
-          <div class="welcome-step"><span class="ws-n">3</span> All tools are live in Copilot, Claude, Cursor</div>
-          <div class="welcome-step"><span class="ws-n">4</span> Use 16 pre-built agents or build your own</div>
+          <div class="welcome-step"><span class="ws-n">3</span> Verify tools are live, test an agent</div>
+          <div class="welcome-step"><span class="ws-n">4</span> Build your own agent or install templates</div>
         </div>
         <div class="welcome-btns">
-          <button class="tour-btn tour-btn-sec" onclick="dismissWelcome()">Skip</button>
-          <button class="tour-btn tour-btn-pri" onclick="dismissWelcome(); startTour()">🚀 Take the Tour</button>
+          <button class="tour-btn tour-btn-sec" onclick="dismissWelcome()">I'll explore on my own</button>
+          <button class="tour-btn tour-btn-pri" onclick="dismissWelcome(); startTour()">🚀 Show Me How</button>
         </div>
       </div>`;
     document.body.appendChild(w);
@@ -1480,17 +1522,14 @@
     dismissWelcome();
     tourStep = 0;
     tourActive = true;
-    // Add backdrop
     const bd = document.createElement('div');
     bd.className = 'tour-backdrop';
     bd.id = 'tour-backdrop';
     document.body.appendChild(bd);
-    // Add highlight
     const hl = document.createElement('div');
     hl.className = 'tour-highlight';
     hl.id = 'tour-highlight';
     document.body.appendChild(hl);
-    // Add card
     const card = document.createElement('div');
     card.className = 'tour-card';
     card.id = 'tour-card';
@@ -1501,49 +1540,74 @@
   function showTourStep() {
     const step = TOUR_STEPS[tourStep];
     if (!step) return endTour();
+    
+    // Navigate to the correct page first
     if (step.nav) navigate(step.nav);
     
-    requestAnimationFrame(() => {
+    // Use setTimeout to let the page render
+    setTimeout(() => {
       const el = document.querySelector(step.target);
       if (!el) return endTour();
       const r = el.getBoundingClientRect();
       
-      // Highlight
+      // Ensure sidebar nav items are visible above backdrop
+      document.querySelectorAll('.nav-item').forEach(n => {
+        n.style.position = 'relative';
+        n.style.zIndex = '9999';
+      });
+      document.querySelector('.sidebar').style.zIndex = '9999';
+      
+      // Highlight target element
       const hl = document.getElementById('tour-highlight');
-      hl.style.top = (r.top - 4) + 'px';
-      hl.style.left = (r.left - 4) + 'px';
-      hl.style.width = (r.width + 8) + 'px';
-      hl.style.height = (r.height + 8) + 'px';
+      hl.style.top = (r.top - 6) + 'px';
+      hl.style.left = (r.left - 6) + 'px';
+      hl.style.width = (r.width + 12) + 'px';
+      hl.style.height = (r.height + 12) + 'px';
       
-      // Make target clickable above backdrop
+      // Make target visible above backdrop
       el.style.position = 'relative';
-      el.style.zIndex = '9999';
-      
-      // Card
+      el.style.zIndex = '10000';
+
+      // Render card
       const card = document.getElementById('tour-card');
       const isLast = tourStep === TOUR_STEPS.length - 1;
       card.innerHTML = `
         <h3><span class="step-num">${tourStep + 1}</span> ${step.title}</h3>
         <p>${step.desc}</p>
         <div class="tour-actions">
-          <span class="tour-progress">${tourStep + 1} of ${TOUR_STEPS.length}</span>
-          <button class="tour-btn tour-btn-skip" onclick="endTour()">Skip tour</button>
-          ${tourStep > 0 ? '<button class="tour-btn tour-btn-sec" onclick="prevTourStep()">Back</button>' : ''}
+          <span class="tour-progress">${tourStep + 1} / ${TOUR_STEPS.length}</span>
+          <button class="tour-btn tour-btn-skip" onclick="endTour()">Skip</button>
+          ${tourStep > 0 ? '<button class="tour-btn tour-btn-sec" onclick="prevTourStep()">← Back</button>' : ''}
           <button class="tour-btn tour-btn-pri" onclick="${isLast ? 'endTour()' : 'nextTourStep()'}">
-            ${isLast ? '✅ Finish' : 'Next →'}
+            ${isLast ? '✅ Done — Let\'s Go!' : 'Next →'}
           </button>
         </div>`;
-      card.style.top = (r.bottom + 12) + 'px';
-      card.style.left = (r.left + 8) + 'px';
+
+      // Position card to the right of the target or below
+      const mainArea = document.querySelector('.main');
+      const mainRect = mainArea ? mainArea.getBoundingClientRect() : { left: 300, top: 50 };
       
-      // If card goes off screen bottom, position above
+      // If target is in sidebar, show card in main area
+      if (r.left < 280) {
+        card.style.top = (r.top) + 'px';
+        card.style.left = (mainRect.left + 40) + 'px';
+      } else {
+        // Target is in main area — show card below it
+        card.style.top = (r.bottom + 16) + 'px';
+        card.style.left = (r.left) + 'px';
+      }
+      
+      // Ensure card doesn't go off screen
       requestAnimationFrame(() => {
         const cr = card.getBoundingClientRect();
         if (cr.bottom > window.innerHeight - 20) {
-          card.style.top = (r.top - cr.height - 12) + 'px';
+          card.style.top = Math.max(20, r.top - cr.height - 16) + 'px';
+        }
+        if (cr.right > window.innerWidth - 20) {
+          card.style.left = (window.innerWidth - cr.width - 30) + 'px';
         }
       });
-    });
+    }, 100);
   }
 
   function nextTourStep() {
@@ -1570,6 +1634,13 @@
     clearTourHighlightZ();
     tourActive = false;
     localStorage.setItem('snayu-toured', '1');
+    // Reset sidebar z-index
+    document.querySelectorAll('.nav-item').forEach(n => {
+      n.style.position = '';
+      n.style.zIndex = '';
+    });
+    const sb = document.querySelector('.sidebar');
+    if (sb) sb.style.zIndex = '';
     ['tour-backdrop', 'tour-highlight', 'tour-card'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.remove();
