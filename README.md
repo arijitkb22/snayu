@@ -18,9 +18,9 @@ But it's more than a connector. Snayu includes a **no-code agent builder** with 
 
 ```bash
 # Install from GitHub
-npm install -g arijitkb22/snayu
+npm install -g github:arijitkb22/snayu
 
-# Or clone and link locally
+# Or clone and link locally (recommended)
 git clone https://github.com/arijitkb22/snayu.git
 cd snayu && npm install && npm link
 ```
