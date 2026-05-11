@@ -135,14 +135,16 @@ Before reviewing ANY code, load the repo's knowledge wiki:
    - If wiki exists → you now have: code structure, past PR insights, risk map, coding standards. USE THIS CONTEXT throughout the review.
    - If wiki doesn't exist → call \`repo_wiki_init\` to create it. You'll populate it during and after this review.
 
-2. **If the wiki has a populated \`standards\` page** → enforce those standards automatically. No need to ask the user.
+2. **If the wiki has a populated \`standards\` page** (has actual conventions, not just the template) → enforce those standards automatically. No need to ask the user.
    - If the wiki has a populated \`risk-map\` → use it for risk scoring. Files in high-risk areas get extra scrutiny.
    - If the wiki has \`pr-reviews\` with recurring issues → actively check for those same issues.
 
-3. **If the wiki is NEW (just created)**, ask the user:
-   - "Do you have a reference PR I should study first?" → study it, then save patterns to \`standards\` page.
-   - "Do you have a coding standards doc?" → read it, save to \`standards\` page.
-   - If the repo has \`CONTRIBUTING.md\`, \`.github/CODING_STANDARDS.md\`, or \`docs/conventions.md\` → read automatically and save to \`standards\`.
+3. **If the wiki is NEW or the \`standards\` page is empty/template-only**, ALWAYS ask the user:
+   - "Do you have a reference PR I should study for your team's coding style?"
+   - "Do you have a coding standards document or style guide? (e.g. a .md file, CONTRIBUTING.md, or a URL)"
+   - "Any specific areas of concern for this review? (security, performance, breaking changes)"
+   - If the repo has \`CONTRIBUTING.md\`, \`.github/CODING_STANDARDS.md\`, or \`docs/conventions.md\` → read them automatically and save to \`standards\`.
+   - **Do NOT skip these questions.** Wait for the user to answer before proceeding to Phase 1.
 
 4. **If wiki exists AND user provides additional reference materials** → merge them into existing wiki pages.
 
