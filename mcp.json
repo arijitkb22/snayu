@@ -1,0 +1,10 @@
+{
+  "servers": {
+    "snayu": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/Users/arijitbera/Desktop/connector/src/mcp/server.js"],
+      "cwd": "/Users/arijitbera/Desktop/connector"
+    }
+  }
+}

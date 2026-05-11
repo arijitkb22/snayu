@@ -1,0 +1,15 @@
+data/connections.json
+examples/
+wiki/
+.env
+.env.*
+*.log
+*.mjs
+*.py
+*.bak
+README.md.bak
+Dockerfile
+node_modules/
+.git/
+.vscode/
+.github/

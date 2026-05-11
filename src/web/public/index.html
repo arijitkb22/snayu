@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snayu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07070a;
+      --surface: #0f0f13;
+      --surface2: #17171d;
+      --surface3: #1e1e26;
+      --border: #1e1e28;
+      --border-hover: #2e2e3e;
+      --text: #f0f0ff;
+      --text-secondary: #9090aa;
+      --text-tertiary: #5a5a72;
+      --accent: #7c6af7;
+      --accent2: #a78bfa;
+      --accent-hover: #9580ff;
+      --accent-subtle: rgba(124,106,247,.12);
+      --accent-glow: rgba(124,106,247,.25);
+      --green: #34d399;
+      --green-subtle: rgba(52,211,153,.1);
+      --red: #f87171;
+      --red-subtle: rgba(248,113,113,.1);
+      --orange: #fbbf24;
+      --orange-subtle: rgba(251,191,36,.1);
+      --radius: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --shadow: 0 4px 6px rgba(0,0,0,.4), 0 12px 40px rgba(0,0,0,.3);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04);
+      --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+      --sidebar-w: 260px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); line-height: 1.55; -webkit-font-smoothing: antialiased; }
+
+    /* ── Scrollbar ───────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 4px; }
+
+    /* ── Layout ──────────────────────────────────────────────────── */
+    .app { display: flex; min-height: 100vh; }
+    .sidebar { width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); position: fixed; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; }
+    .main { flex: 1; margin-left: var(--sidebar-w); padding: 44px 52px; max-width: 1140px; }
+
+    /* ── Sidebar ─────────────────────────────────────────────────── */
+    .logo { padding: 28px 20px 24px; border-bottom: 1px solid var(--border); }
+    .logo-mark { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+    .logo-icon { width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .logo-icon svg { width: 16px; height: 16px; }
+    .logo h1 { font-size: 15px; font-weight: 700; letter-spacing: -.02em; color: var(--text); }
+    .logo p { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; letter-spacing: .01em; }
+
+    .nav-group { padding: 16px 12px 4px; }
+    .nav-label { padding: 4px 8px 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--text-tertiary); }
+    .nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 10px; cursor: pointer; color: var(--text-secondary); font-size: 13px; font-weight: 500; transition: all .15s; user-select: none; margin-bottom: 2px; }
+    .nav-item:hover { color: var(--text); background: var(--surface2); }
+    .nav-item.active { color: var(--text); background: var(--accent-subtle); }
+    .nav-item.active .nav-icon { color: var(--accent); opacity: 1; }
+    .nav-icon { width: 16px; height: 16px; flex-shrink: 0; opacity: .5; transition: opacity .15s; }
+    .nav-item:hover .nav-icon { opacity: .8; }
+    .sidebar-footer { margin-top: auto; padding: 16px 20px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+    .sidebar-footer p { font-size: 11px; color: var(--text-tertiary); }
+    .footer-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); flex-shrink: 0; }
+
+    /* ── Page ────────────────────────────────────────────────────── */
+    .page-header { margin-bottom: 36px; }
+    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
+    .page-header p { font-size: 14px; color: var(--text-secondary); margin-top: 5px; line-height: 1.5; }
+
+    /* ── Cards ───────────────────────────────────────────────────── */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 20px; transition: border-color .15s; }
+    .card:hover { border-color: var(--border-hover); }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .card-header h2 { font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+
+    /* ── Stats ───────────────────────────────────────────────────── */
+    .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 36px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 22px; position: relative; overflow: hidden; transition: border-color .15s, transform .15s; }
+    .stat-card:hover { border-color: var(--border-hover); transform: translateY(-1px); }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2)); opacity: 0; transition: opacity .15s; }
+    .stat-card:hover::before { opacity: 1; }
+    .stat-card .value { font-size: 30px; font-weight: 700; color: var(--text); letter-spacing: -.03em; line-height: 1; margin-bottom: 6px; }
+    .stat-card .label { font-size: 11px; color: var(--text-tertiary); font-weight: 500; text-transform: uppercase; letter-spacing: .06em; }
+
+    /* ── Service Grid ────────────────────────────────────────────── */
+    .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+    .service-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; cursor: pointer; transition: all .15s; }
+    .service-card:hover { border-color: var(--accent); background: var(--surface2); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+    .svc-top { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .svc-avatar { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .svc-avatar.cat-database { background: linear-gradient(135deg,#6366f1,#8b5cf6); }
+    .svc-avatar.cat-cloud { background: linear-gradient(135deg,#f59e0b,#f97316); }
+    .svc-avatar.cat-search { background: linear-gradient(135deg,#06b6d4,#0ea5e9); }
+    .svc-avatar.cat-devops { background: linear-gradient(135deg,#8b5cf6,#a78bfa); }
+    .svc-avatar.cat-communication { background: linear-gradient(135deg,#22c55e,#10b981); }
+    .svc-avatar.cat-monitoring { background: linear-gradient(135deg,#ec4899,#f43f5e); }
+    .svc-avatar.cat-custom { background: linear-gradient(135deg,#64748b,#475569); }
+    .svc-name { font-size: 13px; font-weight: 600; }
+    .svc-desc { font-size: 12px; color: var(--text-tertiary); line-height: 1.4; }
+    .svc-badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 20px; background: var(--surface3); color: var(--text-tertiary); margin-top: 12px; font-weight: 600; letter-spacing: .03em; border: 1px solid var(--border); }
+
+    /* ── Category ────────────────────────────────────────────────── */
+    .cat-header { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-tertiary); margin: 32px 0 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    .cat-header:first-child { margin-top: 0; }
+
+    /* ── Connection List ─────────────────────────────────────────── */
+    .conn-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 8px; background: var(--surface); transition: all .15s; }
+    .conn-item:hover { border-color: var(--border-hover); background: var(--surface2); }
+    .conn-info { display: flex; align-items: center; gap: 12px; }
+    .conn-avatar { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0; background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+    .conn-name { font-weight: 600; font-size: 13px; }
+    .conn-meta { font-size: 11px; color: var(--text-tertiary); margin-top: 1px; }
+    .conn-actions { display: flex; gap: 4px; }
+
+    /* ── Status ──────────────────────────────────────────────────── */
+    .status { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: .05em; }
+    .status::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
+    .status-connected { background: var(--green-subtle); color: var(--green); border: 1px solid rgba(52,211,153,.2); }
+    .status-connected::before { background: var(--green); box-shadow: 0 0 4px var(--green); }
+    .status-configured { background: var(--orange-subtle); color: var(--orange); border: 1px solid rgba(251,191,36,.2); }
+    .status-configured::before { background: var(--orange); }
+    .status-error { background: var(--red-subtle); color: var(--red); border: 1px solid rgba(248,113,113,.2); }
+    .status-error::before { background: var(--red); }
+    .status-registered { background: var(--accent-subtle); color: var(--accent2); border: 1px solid rgba(124,106,247,.2); }
+    .status-registered::before { background: var(--accent); }
+
+    /* ── Buttons ─────────────────────────────────────────────────── */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 14px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; font-family: inherit; letter-spacing: .01em; }
+    .btn:hover { border-color: var(--border-hover); background: var(--surface3); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 0 16px rgba(124,106,247,.3); }
+    .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); box-shadow: 0 0 24px rgba(124,106,247,.4); }
+    .btn-danger { color: var(--red); border-color: transparent; background: transparent; }
+    .btn-danger:hover { background: var(--red-subtle); border-color: rgba(248,113,113,.3); }
+    .btn-sm { padding: 4px 10px; font-size: 11px; border-radius: 7px; }
+    .btn-ghost { background: transparent; border-color: transparent; color: var(--text-secondary); }
+    .btn-ghost:hover { background: var(--surface2); border-color: var(--border); color: var(--text); }
+
+    /* ── Forms ───────────────────────────────────────────────────── */
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary); letter-spacing: .01em; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 9px 12px; border-radius: 9px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); font-size: 13px; font-family: inherit; transition: all .15s;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-subtle);
+    }
+    .form-group input::placeholder, .form-group textarea::placeholder { color: var(--text-tertiary); }
+    .form-group textarea { resize: vertical; min-height: 72px; }
+    .form-group .hint { font-size: 11px; color: var(--text-tertiary); margin-top: 5px; line-height: 1.4; }
+    .form-group select option { background: var(--surface2); }
+
+    /* ── Modal ───────────────────────────────────────────────────── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 100; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 30px; max-width: 520px; width: 90%; max-height: 88vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
+    .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; letter-spacing: -.02em; }
+    .modal .subtitle { color: var(--text-tertiary); font-size: 13px; margin-bottom: 24px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border); }
+
+    /* ── Agent Config Cards ──────────────────────────────────────── */
+    .agent-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; margin-bottom: 14px; transition: border-color .15s; }
+    .agent-card:hover { border-color: var(--border-hover); }
+    .agent-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .agent-card .instructions { font-size: 12px; color: var(--text-tertiary); margin-bottom: 10px; line-height: 1.5; }
+    .agent-card .file-path { font-size: 11px; color: var(--accent2); font-family: var(--font-mono); margin-bottom: 12px; background: var(--accent-subtle); padding: 4px 8px; border-radius: 6px; display: inline-block; }
+    .agent-card pre { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px; font-size: 12px; overflow-x: auto; position: relative; font-family: var(--font-mono); line-height: 1.6; }
+    .copy-btn { position: absolute; top: 10px; right: 10px; }
+
+    /* ── Tools ───────────────────────────────────────────────────── */
+    .tool-item { padding: 13px 16px; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 6px; background: var(--surface); transition: all .15s; }
+    .tool-item:hover { border-color: var(--border-hover); background: var(--surface2); }
+    .tool-name { font-weight: 600; font-size: 12px; color: var(--accent2); font-family: var(--font-mono); }
+    .tool-desc { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
+    .tool-meta { font-size: 11px; color: var(--text-tertiary); margin-top: 3px; }
+
+    /* ── Agent Items ─────────────────────────────────────────────── */
+    .agent-item { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 8px; background: var(--surface); transition: all .15s; }
+    .agent-item:hover { border-color: var(--border-hover); background: var(--surface2); }
+    .agent-info { display: flex; align-items: center; gap: 12px; }
+    .agent-avatar { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .agent-avatar.type-analysis { background: linear-gradient(135deg,#6366f1,#8b5cf6); }
+    .agent-avatar.type-triage { background: linear-gradient(135deg,#ec4899,#f43f5e); }
+    .agent-avatar.type-automation { background: linear-gradient(135deg,#f59e0b,#f97316); }
+    .agent-avatar.type-monitoring { background: linear-gradient(135deg,#06b6d4,#0ea5e9); }
+    .agent-avatar.type-custom { background: linear-gradient(135deg,#8b5cf6,#a78bfa); }
+    .agent-name { font-weight: 600; font-size: 13px; }
+    .agent-meta { font-size: 11px; color: var(--text-tertiary); margin-top: 1px; }
+    .agent-badge { display: inline-flex; align-items: center; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 20px; background: var(--surface3); color: var(--text-tertiary); margin-right: 4px; border: 1px solid var(--border); }
+
+    /* ── Empty ───────────────────────────────────────────────────── */
+    .empty { text-align: center; padding: 56px 24px; color: var(--text-tertiary); }
+    .empty-icon { width: 52px; height: 52px; margin: 0 auto 18px; border-radius: 14px; background: var(--surface2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
+    .empty h3 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .empty p { font-size: 13px; line-height: 1.5; }
+
+    /* ── Toast ───────────────────────────────────────────────────── */
+    .toast { position: fixed; bottom: 24px; right: 24px; padding: 11px 18px; border-radius: 10px; font-size: 13px; font-weight: 500; z-index: 200; animation: slideUp .25s cubic-bezier(.34,1.56,.64,1); box-shadow: var(--shadow-lg); border: 1px solid; }
+    .toast-success { background: rgba(20,40,30,.95); color: var(--green); border-color: rgba(52,211,153,.25); }
+    .toast-error { background: rgba(40,15,15,.95); color: var(--red); border-color: rgba(248,113,113,.25); }
+    .toast-warning { background: rgba(40,30,10,.95); color: var(--orange); border-color: rgba(251,191,36,.25); max-width: 420px; white-space: normal; line-height: 1.5; }
+    @keyframes slideUp { from { transform: translateY(16px) scale(.95); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    .hidden { display: none !important; }
+    .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.2); border-top-color: currentColor; border-radius: 50%; animation: spin .5s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Quick Start steps ───────────────────────────────────────── */
+    .qs-step { display: flex; gap: 14px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .qs-step:last-child { border-bottom: none; padding-bottom: 0; }
+    .qs-num { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-subtle); border: 1px solid var(--accent); color: var(--accent2); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .qs-text { font-size: 13px; color: var(--text-secondary); line-height: 1.5; padding-top: 2px; }
+    .qs-text a { color: var(--accent2); text-decoration: none; font-weight: 500; }
+    .qs-text a:hover { color: var(--text); }
+
+    /* ── Onboard Tool Row ────────────────────────────────────────── */
+    .tool-row { display: grid; grid-template-columns: 1fr 2fr 32px; gap: 8px; align-items: start; margin-bottom: 8px; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; transition: border-color .15s; }
+    .tool-row:hover { border-color: var(--border-hover); }
+    .tool-row input { padding: 7px 10px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 12px; font-family: inherit; transition: border-color .15s; }
+    .tool-row input:focus { outline: none; border-color: var(--accent); }
+    .tool-row-remove { width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--border); background: transparent; color: var(--text-tertiary); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: all .12s; align-self: center; }
+    .tool-row-remove:hover { color: var(--red); border-color: rgba(248,113,113,.3); background: var(--red-subtle); }
+
+    /* ── Registry Agent Cards ────────────────────────────────────── */
+    .reg-agent { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 10px; transition: all .15s; }
+    .reg-agent:hover { border-color: var(--border-hover); background: var(--surface2); }
+    .reg-agent-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .reg-agent-info { display: flex; align-items: center; gap: 13px; }
+    .reg-agent-avatar { width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: #fff; flex-shrink: 0; background: linear-gradient(135deg, var(--accent), var(--accent2)); box-shadow: 0 4px 12px rgba(124,106,247,.3); }
+    .reg-agent-name { font-weight: 600; font-size: 14px; }
+    .reg-agent-meta { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+    .reg-agent-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .reg-tool-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; background: var(--accent-subtle); color: var(--accent2); font-family: var(--font-mono); border: 1px solid rgba(124,106,247,.2); }
+
+    /* ── Responsive ──────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 24px 20px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 500px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 7v4m0 0-5.5 6M12 11l5.5 6"/></svg>
+        </div>
+        <h1>Snayu</h1>
+      </div>
+      <p>স্নায়ু · the nerve of your AI</p>
+    </div>
+    <nav class="nav-group">
+      <div class="nav-label">Overview</div>
+      <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item" data-page="services" onclick="navigate('services')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        Services
+      </div>
+      <div class="nav-item" data-page="connections" onclick="navigate('connections')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        Connections
+      </div>
+    </nav>
+    <nav class="nav-group">
+      <div class="nav-label">AI Agents</div>
+      <div class="nav-item" data-page="agents" onclick="navigate('agents')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01"/><path d="M17 12h.01"/><path d="M7 12h.01"/></svg>
+        MCP Setup
+      </div>
+      <div class="nav-item" data-page="onboard" onclick="navigate('onboard')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        Agent Registry
+      </div>
+      <div class="nav-item" data-page="tools" onclick="navigate('tools')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        Active Tools
+      </div>
+      <div class="nav-item" data-page="builder" onclick="navigate('builder')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        Agent Builder
+      </div>
+    </nav>
+    <div class="sidebar-footer"><div class="footer-dot"></div><p>Running on port 3456</p></div>
+  </aside>
+
+  <main class="main">
+    <!-- Dashboard -->
+    <div id="page-dashboard" class="page">
+      <div class="page-header"><h1>Dashboard</h1><p>Your unified connector hub — connect services once, use from all AI agents.</p></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="value" id="stat-services">—</div><div class="label">Services</div></div>
+        <div class="stat-card"><div class="value" id="stat-connections">—</div><div class="label">Connections</div></div>
+        <div class="stat-card"><div class="value" id="stat-active">—</div><div class="label">Active</div></div>
+        <div class="stat-card"><div class="value" id="stat-tools">—</div><div class="label">Tools</div></div>
+        <div class="stat-card"><div class="value" id="stat-registry">—</div><div class="label">Onboarded Agents</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>Quick Start</h2></div>
+        <div style="font-size:13px;line-height:2;color:var(--text-secondary);">
+          <p><strong style="color:var(--text)">1.</strong> Browse <a href="#" onclick="navigate('services');return false" style="color:var(--accent);text-decoration:none">Services</a> and connect the ones you use.</p>
+          <p><strong style="color:var(--text)">2.</strong> Go to <a href="#" onclick="navigate('agents');return false" style="color:var(--accent);text-decoration:none">MCP Setup</a> to get the config for your AI agent.</p>
+          <p><strong style="color:var(--text)">3.</strong> Paste the config, restart your agent, and all tools are available.</p>
+          <p><strong style="color:var(--text)">4.</strong> Register external <a href="#" onclick="navigate('connected-agents');return false" style="color:var(--accent);text-decoration:none">Agents</a> for agent-to-agent communication.</p>
+          <p><strong style="color:var(--text)">5.</strong> Developers: <a href="#" onclick="navigate('onboard');return false" style="color:var(--accent);text-decoration:none">Onboard your agent</a> — its tools auto-appear for all users.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>Recent Connections</h2><button class="btn btn-primary btn-sm" onclick="navigate('services')">+ Add</button></div>
+        <div id="recent-connections"></div>
+      </div>
+    </div>
+
+    <!-- Services -->
+    <div id="page-services" class="page hidden">
+      <div class="page-header"><h1>Services</h1><p>Browse and connect to any supported service. Once connected, it's available to all your AI agents.</p></div>
+      <div id="service-catalog"></div>
+    </div>
+
+    <!-- Connections -->
+    <div id="page-connections" class="page hidden">
+      <div class="page-header"><h1>Connections</h1><p>Manage your active service connections.</p></div>
+      <div id="connections-list"></div>
+    </div>
+
+    <!-- MCP Setup -->
+    <div id="page-agents" class="page hidden">
+      <div class="page-header"><h1>MCP Setup</h1><p>Copy the configuration for your AI agent. One config gives access to all your services.</p></div>
+      <div id="agent-configs"></div>
+    </div>
+
+    <!-- Connected Agents -->
+    <div id="page-connected-agents" class="page hidden">
+      <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div><h1>Connected Agents</h1><p>Register external AI agents so they can communicate with each other through the connector.</p></div>
+        <button class="btn btn-primary" onclick="openAgentModal()">+ Register Agent</button>
+      </div>
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header"><h2>How It Works</h2></div>
+        <div style="font-size:13px;line-height:1.8;color:var(--text-secondary);">
+          <p>Register your specialized agents (e.g. Jira Analysis Agent, Defect Triage Agent) here. Each agent gets a unique ID and endpoint. Once registered, agents can:</p>
+          <ul style="margin:8px 0 0 20px;">
+            <li>Discover other registered agents via <code style="font-size:12px;background:var(--surface3);padding:1px 5px;border-radius:4px;">connector_list_agents</code></li>
+            <li>Send messages to other agents via <code style="font-size:12px;background:var(--surface3);padding:1px 5px;border-radius:4px;">connector_send_to_agent</code></li>
+            <li>Share context and delegate tasks across agent boundaries</li>
+          </ul>
+        </div>
+      </div>
+      <div id="agents-list"></div>
+    </div>
+
+    <!-- Active Tools -->
+    <div id="page-tools" class="page hidden">
+      <div class="page-header"><h1>Active Tools</h1><p>Tools currently exposed to your AI agents via the Snayu MCP — includes both service connections and onboarded agents.</p></div>
+      <div id="tools-list"></div>
+    </div>
+
+    <!-- Onboard Agent (Developer Registry) -->
+    <div id="page-onboard" class="page hidden">
+      <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div><h1>Agent Registry</h1><p>Register your agent here — define its tools and endpoint. Once registered, those tools are instantly available to all users via Snayu MCP with zero extra setup on their end.</p></div>
+        <button class="btn btn-primary" onclick="openOnboardModal()">+ Register Agent</button>
+      </div>
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header"><h2>How It Works</h2></div>
+        <div style="font-size:13px;line-height:1.8;color:var(--text-secondary);">
+          <p style="margin-bottom:8px"><strong style="color:var(--text)">For developers:</strong> Register your agent with a manifest (name, endpoint, tools). Snayu validates it, runs a health check, and namespaces your tools to avoid collisions.</p>
+          <p style="margin-bottom:8px"><strong style="color:var(--text)">For users:</strong> New tools appear automatically in every connected AI agent (Copilot, Claude, Cursor…) — no config changes, no restarts. They just work.</p>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:12px;font-family:var(--font-mono);font-size:12px;line-height:1.6;">
+            <span style="color:var(--text-tertiary)">// Your agent exposes tools via HTTP</span><br>
+            POST /tools/analyze_ticket  → { ticketId: "PROJ-123" }<br>
+            POST /tools/find_duplicates → { ticketId: "PROJ-123", threshold: 0.8 }<br><br>
+            <span style="color:var(--text-tertiary)">// After onboarding, ALL Snayu users get:</span><br>
+            <span style="color:var(--accent)">ragent_xxx__analyze_ticket</span><br>
+            <span style="color:var(--accent)">ragent_xxx__find_duplicates</span>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header"><h2>Registry Stats</h2></div>
+        <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:0;">
+          <div class="stat-card"><div class="value" id="reg-stat-agents">—</div><div class="label">Onboarded Agents</div></div>
+          <div class="stat-card"><div class="value" id="reg-stat-healthy">—</div><div class="label">Healthy</div></div>
+          <div class="stat-card"><div class="value" id="reg-stat-tools">—</div><div class="label">Tools Exposed</div></div>
+        </div>
+      </div>
+      <div id="registry-list"></div>
+    </div>
+
+    <!-- Agent Builder -->
+    <div id="page-builder" class="page hidden">
+      <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div><h1>Agent Builder</h1><p>Compose AI agents from your connected services — no code required. Select tools, define behavior, and deploy instantly.</p></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn" onclick="navigate('prompts')">📚 Prompt Library</button>
+          <button class="btn btn-primary" onclick="openBuilderModal()">+ Create Agent</button>
+        </div>
+      </div>
+      <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+        <div class="stat-card"><div class="value" id="builder-stat-agents">—</div><div class="label">Built Agents</div></div>
+        <div class="stat-card"><div class="value" id="builder-stat-active">—</div><div class="label">Active</div></div>
+        <div class="stat-card"><div class="value" id="builder-stat-executions">—</div><div class="label">Total Runs</div></div>
+        <div class="stat-card"><div class="value" id="builder-stat-tools">—</div><div class="label">Available Tools</div></div>
+      </div>
+
+      <!-- Default Agent Templates -->
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header"><h2>Quick Start Templates</h2><span style="font-size:11px;color:var(--text-tertiary);">One-click install</span></div>
+        <div id="templates-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;"></div>
+      </div>
+
+      <div class="card-header" style="margin-bottom:14px;"><h2>Your Agents</h2></div>
+      <div id="built-agents-list"></div>
+      <div id="builder-empty" class="empty hidden">
+        <div class="empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></div>
+        <h3>No agents built yet</h3>
+        <p>Create your first agent or install a template above.</p>
+      </div>
+    </div>
+
+    <!-- Prompt Library -->
+    <div id="page-prompts" class="page hidden">
+      <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div><h1>Prompt Registry</h1><p>Curated system prompts for common agent use cases. Use them when building agents or create your own.</p></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn" onclick="navigate('builder')">← Back to Builder</button>
+          <button class="btn btn-primary" onclick="openPromptModal()">+ Add Prompt</button>
+        </div>
+      </div>
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr));" id="prompt-categories"></div>
+      <div id="prompts-list"></div>
+    </div>
+  </main>
+</div>
+
+<!-- Connection Modal -->
+<div id="connect-modal" class="modal-overlay hidden">
+  <div class="modal" id="modal-inner">
+    <h2 id="modal-title">Connect Service</h2>
+    <p class="subtitle" id="modal-subtitle"></p>
+    <form id="connect-form">
+      <div class="form-group"><label for="conn-name">Connection Name</label><input type="text" id="conn-name" placeholder="e.g. Production DB, Work GitHub" required autocomplete="off"></div>
+      <div id="dynamic-fields"></div>
+      <input type="hidden" id="conn-service-id">
+      <input type="hidden" id="conn-edit-id" value="">
+      <div class="modal-actions">
+        <button type="button" class="btn" id="cancel-btn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="connect-btn">Connect & Test</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Register Agent Modal -->
+<div id="agent-modal" class="modal-overlay hidden">
+  <div class="modal" id="agent-modal-inner">
+    <h2 id="agent-modal-title">Register Agent</h2>
+    <p class="subtitle">Add an external AI agent to enable agent-to-agent communication.</p>
+    <form id="agent-form">
+      <div class="form-group"><label for="agent-name">Agent Name *</label><input type="text" id="agent-name" placeholder="e.g. Jira Analysis Agent" required autocomplete="off"></div>
+      <div class="form-group"><label for="agent-desc">Description</label><input type="text" id="agent-desc" placeholder="e.g. Analyzes Jira tickets and generates reports" autocomplete="off"></div>
+      <div class="form-group"><label for="agent-type">Agent Type</label><select id="agent-type"><option value="analysis">Analysis</option><option value="triage">Triage</option><option value="automation">Automation</option><option value="monitoring">Monitoring</option><option value="custom">Custom</option></select></div>
+      <div class="form-group"><label for="agent-endpoint">Endpoint URL</label><input type="text" id="agent-endpoint" placeholder="http://localhost:8080/agent or MCP stdio path" autocomplete="off"><div class="hint">HTTP endpoint or MCP server path this agent listens on.</div></div>
+      <div class="form-group"><label for="agent-protocol">Protocol</label><select id="agent-protocol"><option value="mcp-stdio">MCP (stdio)</option><option value="mcp-sse">MCP (SSE)</option><option value="http">HTTP / REST</option><option value="webhook">Webhook</option></select></div>
+      <div class="form-group"><label for="agent-capabilities">Capabilities (comma-separated)</label><input type="text" id="agent-capabilities" placeholder="e.g. jira-analysis, report-generation, ticket-triage" autocomplete="off"><div class="hint">What this agent can do — helps other agents discover it.</div></div>
+      <input type="hidden" id="agent-edit-id" value="">
+      <div class="modal-actions">
+        <button type="button" class="btn" onclick="closeAgentModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="agent-submit-btn">Register</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Onboard Agent Modal -->
+<div id="onboard-modal" class="modal-overlay hidden">
+  <div class="modal" id="onboard-modal-inner" style="max-width:580px;">
+    <h2 id="onboard-modal-title">Onboard Your Agent</h2>
+    <p class="subtitle">Register an agent manifest. Its tools will be available to all users instantly.</p>
+    <form id="onboard-form">
+      <div class="form-group"><label for="ob-name">Agent Name *</label><input type="text" id="ob-name" placeholder="e.g. Jira Analysis Agent" required autocomplete="off"></div>
+      <div class="form-group"><label for="ob-desc">Description</label><input type="text" id="ob-desc" placeholder="Analyzes Jira tickets, finds duplicates, suggests priorities" autocomplete="off"></div>
+      <div class="form-group"><label for="ob-author">Author</label><input type="text" id="ob-author" placeholder="your-name or team" autocomplete="off"></div>
+      <div class="form-group"><label for="ob-version">Version</label><input type="text" id="ob-version" placeholder="1.0.0" value="1.0.0" autocomplete="off"></div>
+      <div class="form-group"><label for="ob-endpoint">Endpoint *</label><input type="text" id="ob-endpoint" placeholder="http://localhost:4000" required autocomplete="off"><div class="hint">Base URL of your agent. Snayu will call POST {endpoint}/tools/{toolName} to invoke tools.</div></div>
+      <div class="form-group"><label for="ob-health">Health Endpoint (optional)</label><input type="text" id="ob-health" placeholder="http://localhost:4000/health" autocomplete="off"><div class="hint">GET endpoint for health checks. Defaults to {endpoint}/health.</div></div>
+      <div class="form-group"><label for="ob-protocol">Protocol</label><select id="ob-protocol"><option value="http">HTTP / REST</option><option value="mcp-stdio">MCP (stdio)</option><option value="mcp-sse">MCP (SSE)</option><option value="webhook">Webhook</option></select></div>
+      <div class="form-group">
+        <label>Tools * <button type="button" class="btn btn-sm" onclick="addToolRow()" style="float:right;font-size:11px;padding:2px 8px;">+ Add Tool</button></label>
+        <div id="ob-tools-list"></div>
+        <div class="hint" style="margin-top:4px;">Each tool your agent exposes. Name must be alphanumeric (letters, numbers, _, -).</div>
+      </div>
+      <input type="hidden" id="ob-edit-id" value="">
+      <div class="modal-actions">
+        <button type="button" class="btn" onclick="closeOnboardModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="ob-submit-btn">Onboard</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Confirm Dialog (unchanged) -->
+<div id="confirm-dialog" class="modal-overlay hidden">
+  <div class="modal" style="max-width:400px;text-align:center;">
+    <h2 style="margin-bottom:12px;">Confirm</h2>
+    <p id="confirm-msg" style="color:var(--text-secondary);margin-bottom:20px;font-size:13px;"></p>
+    <div style="display:flex;justify-content:center;gap:8px;">
+      <button class="btn" id="confirm-cancel-btn">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok-btn" style="background:var(--red);color:#fff;border-color:var(--red);">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Agent Builder Modal -->
+<div id="builder-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:600px;">
+    <h2 id="builder-modal-title">Create Agent</h2>
+    <p class="subtitle">Compose an agent by selecting tools from your connected services.</p>
+    <form id="builder-form">
+      <div class="form-group"><label>Agent Name</label><input type="text" id="builder-name" placeholder="e.g. Incident Responder" required></div>
+      <div class="form-group"><label>Description</label><input type="text" id="builder-desc" placeholder="What does this agent do?"></div>
+      <div class="form-group"><label>System Prompt</label>
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <select id="builder-prompt-select" onchange="applyPromptTemplate(this.value)" style="flex:1;padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;">
+            <option value="">— Use a prompt from library —</option>
+          </select>
+        </div>
+        <textarea id="builder-prompt" placeholder="You are an agent that... Describe the agent's behavior and goals."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Select Tools</label>
+        <p class="hint">Pick which tools this agent can use from your connected services.</p>
+        <div id="builder-tools-list" style="max-height:200px;overflow-y:auto;margin-top:8px;border:1px solid var(--border);border-radius:10px;padding:8px;background:var(--bg);"></div>
+      </div>
+      <div class="form-group"><label>Trigger</label>
+        <select id="builder-trigger">
+          <option value="manual">Manual (API call)</option>
+          <option value="webhook">Webhook (incoming HTTP)</option>
+          <option value="schedule">Schedule (cron)</option>
+        </select>
+      </div>
+      <div class="form-group"><label>LLM Provider (optional)</label>
+        <select id="builder-llm">
+          <option value="none">None (sequential tool execution)</option>
+          <option value="openai">OpenAI (GPT-4o)</option>
+          <option value="anthropic">Anthropic (Claude)</option>
+          <option value="azure">Azure OpenAI</option>
+        </select>
+        <p class="hint">If set, the agent uses an LLM to autonomously decide which tools to call.</p>
+      </div>
+      <input type="hidden" id="builder-edit-id" value="">
+      <div class="modal-actions">
+        <button type="button" class="btn" onclick="closeBuilderModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create Agent</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add Custom Prompt Modal -->
+<div id="prompt-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:560px;">
+    <h2>Add Custom Prompt</h2>
+    <p class="subtitle">Create a reusable system prompt for your agents.</p>
+    <form id="prompt-form">
+      <div class="form-group"><label>Name</label><input type="text" id="prompt-name" placeholder="e.g. Customer Escalation Handler" required></div>
+      <div class="form-group"><label>Category</label>
+        <select id="prompt-category">
+          <option value="ops">Ops & Monitoring</option>
+          <option value="data">Data & Analytics</option>
+          <option value="devops">DevOps & Code</option>
+          <option value="communication">Communication</option>
+          <option value="security">Security</option>
+          <option value="automation">Automation</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Description</label><input type="text" id="prompt-description" placeholder="One-line summary of what this prompt does"></div>
+      <div class="form-group"><label>System Prompt</label><textarea id="prompt-content" style="min-height:180px;font-family:var(--font-mono);font-size:12px;" placeholder="You are an agent that..." required></textarea></div>
+      <div class="modal-actions">
+        <button type="button" class="btn" onclick="closePromptModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Prompt</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // ─── Keyboard fix for VS Code webview ─────────────────────────────────────
+  document.addEventListener('keydown', async (e) => {
+    const el = document.activeElement;
+    const isInput = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+    if (isInput && (e.metaKey || e.ctrlKey) && e.key === 'v') {
+      e.preventDefault(); e.stopPropagation();
+      try { const text = await navigator.clipboard.readText(); const s = el.selectionStart, end = el.selectionEnd; el.value = el.value.substring(0, s) + text + el.value.substring(end); el.selectionStart = el.selectionEnd = s + text.length; el.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) { document.execCommand('paste'); }
+      return;
+    }
+    if (isInput && (e.metaKey || e.ctrlKey) && e.key === 'a') { e.preventDefault(); e.stopPropagation(); el.select(); return; }
+    if (isInput && (e.metaKey || e.ctrlKey) && e.key === 'c') { e.preventDefault(); e.stopPropagation(); const sel = el.value.substring(el.selectionStart, el.selectionEnd); if (sel) try { await navigator.clipboard.writeText(sel); } catch (_) { document.execCommand('copy'); } return; }
+    if (isInput && (e.metaKey || e.ctrlKey) && e.key === 'x') { e.preventDefault(); e.stopPropagation(); const s = el.selectionStart, end = el.selectionEnd, sel = el.value.substring(s, end); if (sel) { try { await navigator.clipboard.writeText(sel); } catch (_) { document.execCommand('copy'); } el.value = el.value.substring(0, s) + el.value.substring(end); el.selectionStart = el.selectionEnd = s; el.dispatchEvent(new Event('input', { bubbles: true })); } return; }
+  }, true);
+
+  // ─── State ────────────────────────────────────────────────────────────────
+  let catalog = {};
+  let connections = [];
+  let agents = [];
+
+  // ─── Navigation ───────────────────────────────────────────────────────────
+  function navigate(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const pageEl = document.getElementById(`page-${page}`);
+    if (pageEl) pageEl.classList.remove('hidden');
+    const navEl = document.querySelector(`.nav-item[data-page="${page}"]`);
+    if (navEl) navEl.classList.add('active');
+    switch (page) {
+      case 'dashboard': loadDashboard(); break;
+      case 'services': loadCatalog(); break;
+      case 'connections': loadConnections(); break;
+      case 'agents': loadAgentConfigs(); break;
+      case 'connected-agents': loadAgents(); break;
+      case 'onboard': loadOnboard(); break;
+      case 'tools': loadTools(); break;
+      case 'builder': loadBuilder(); break;
+      case 'prompts': loadPrompts(); break;
+    }
+  }
+
+  // ─── API ──────────────────────────────────────────────────────────────────
+  async function api(path, opts) {
+    const res = await fetch(`/api${path}`, { headers: { 'Content-Type': 'application/json' }, ...opts });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      // Surface actual error messages from the server
+      const msg = data?.details?.join(', ') || data?.error || `HTTP ${res.status}`;
+      const err = new Error(msg);
+      err.data = data;
+      console.error(`API error ${path}:`, err);
+      throw err;
+    }
+    return data;
+  }
+
+  function toast(msg, type = 'success') {
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), type === 'warning' ? 6000 : 3500);
+  }
+
+  // ─── Confirm Dialog ───────────────────────────────────────────────────────
+  let _confirmCb = null;
+  function showConfirmDialog(message, onConfirm) { document.getElementById('confirm-msg').textContent = message; _confirmCb = onConfirm; document.getElementById('confirm-dialog').classList.remove('hidden'); }
+  function closeConfirmDialog() { document.getElementById('confirm-dialog').classList.add('hidden'); _confirmCb = null; }
+  document.getElementById('confirm-cancel-btn').addEventListener('click', closeConfirmDialog);
+  document.getElementById('confirm-ok-btn').addEventListener('click', async () => { const cb = _confirmCb; closeConfirmDialog(); if (cb) await cb(); });
+  document.getElementById('confirm-dialog').addEventListener('mousedown', (e) => { if (e.target.id === 'confirm-dialog') closeConfirmDialog(); });
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+  function getInitials(name) { return (name || '?').split(/[\s_-]+/).map(w => w[0]).join('').substring(0, 2).toUpperCase(); }
+  function escapeHtml(str) { return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  const catColors = { database: 'cat-database', cloud: 'cat-cloud', search: 'cat-search', devops: 'cat-devops', communication: 'cat-communication', monitoring: 'cat-monitoring', custom: 'cat-custom' };
+  const catLabels = { database: 'Databases', cloud: 'Cloud Services', search: 'Search & Analytics', devops: 'DevOps & Collaboration', communication: 'Communication', monitoring: 'Monitoring & Observability', custom: 'Custom / Generic' };
+
+  // ─── Dashboard ────────────────────────────────────────────────────────────
+  async function loadDashboard() {
+    try {
+      const stats = await api('/stats');
+      document.getElementById('stat-services').textContent = stats.totalServices;
+      document.getElementById('stat-connections').textContent = stats.totalConnections;
+      document.getElementById('stat-active').textContent = stats.activeConnections;
+      document.getElementById('stat-tools').textContent = stats.totalTools;
+      document.getElementById('stat-registry').textContent = stats.registryAgents || 0;
+    } catch (_) {}
+    try { connections = await api('/connections'); } catch (_) { connections = []; }
+    const recent = document.getElementById('recent-connections');
+    if (connections.length === 0) {
+      recent.innerHTML = '<div class="empty"><div class="empty-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div><h3>No connections yet</h3><p>Browse services to add your first connection.</p></div>';
+    } else {
+      recent.innerHTML = connections.slice(0, 5).map(renderConnectionItem).join('');
+    }
+  }
+
+  // ─── Catalog ──────────────────────────────────────────────────────────────
+  async function loadCatalog() {
+    const c = document.getElementById('service-catalog');
+    c.innerHTML = '<div style="text-align:center;padding:48px;color:var(--text-tertiary)"><div class="spinner" style="margin:0 auto 12px"></div>Loading...</div>';
+    try { catalog = await api('/catalog'); } catch (_) { c.innerHTML = '<div class="empty"><h3>Could not load services</h3><p><button class="btn btn-primary btn-sm" onclick="loadCatalog()" style="margin-top:8px">Retry</button></p></div>'; return; }
+    if (!catalog || Object.keys(catalog).length === 0) { c.innerHTML = '<div class="empty"><h3>No services found</h3></div>'; return; }
+    let html = '';
+    for (const [cat, services] of Object.entries(catalog)) {
+      html += `<div class="cat-header">${catLabels[cat] || cat}</div><div class="service-grid">`;
+      for (const svc of services) {
+        html += `<div class="service-card" onclick="openConnectModal('${svc.id}')"><div class="svc-top"><div class="svc-avatar ${catColors[cat] || 'cat-custom'}">${getInitials(svc.name)}</div><div class="svc-name">${svc.name}</div></div><div class="svc-desc">${svc.description}</div><span class="svc-badge">${svc.connectionType}</span></div>`;
+      }
+      html += '</div>';
+    }
+    c.innerHTML = html;
+  }
+
+  // ─── Connect Modal ────────────────────────────────────────────────────────
+  async function openConnectModal(serviceId) {
+    let svc;
+    try { svc = await api(`/catalog/${serviceId}`); } catch (_) { toast('Failed to load service details.', 'error'); return; }
+    document.getElementById('modal-title').textContent = `Connect to ${svc.name}`;
+    document.getElementById('modal-subtitle').textContent = svc.description;
+    document.getElementById('conn-service-id').value = serviceId;
+    document.getElementById('conn-edit-id').value = '';
+    document.getElementById('conn-name').value = '';
+    document.getElementById('connect-btn').textContent = 'Connect & Test';
+    const container = document.getElementById('dynamic-fields');
+    container.innerHTML = svc.fields.map(renderFormField).join('');
+    for (const f of svc.fields) { if (f.default && f.type !== 'select' && f.type !== 'boolean') { setTimeout(() => { const el = document.getElementById(`field-${f.key}`); if (el && !el.value) el.value = f.default; }, 0); } }
+    document.getElementById('connect-modal').classList.remove('hidden');
+  }
+
+  async function openEditModal(connId) {
+    let conn, svc;
+    try { conn = await api(`/connections/${connId}?raw=1`); } catch (_) { toast('Failed to load connection.', 'error'); return; }
+    try { svc = await api(`/catalog/${conn.serviceId}`); } catch (_) { toast('Failed to load service.', 'error'); return; }
+    document.getElementById('modal-title').textContent = `Edit ${conn.name}`;
+    document.getElementById('modal-subtitle').textContent = svc.description;
+    document.getElementById('conn-service-id').value = conn.serviceId;
+    document.getElementById('conn-edit-id').value = connId;
+    document.getElementById('conn-name').value = conn.name || '';
+    document.getElementById('connect-btn').textContent = 'Save & Test';
+    document.getElementById('dynamic-fields').innerHTML = svc.fields.map(renderFormField).join('');
+    setTimeout(() => { for (const f of svc.fields) { const el = document.getElementById(`field-${f.key}`); if (!el) continue; const v = conn.config[f.key]; if (f.type === 'boolean') el.checked = !!v; else if (v !== undefined && v !== null) el.value = v; else if (f.default) el.value = f.default; } }, 0);
+    document.getElementById('connect-modal').classList.remove('hidden');
+  }
+
+  function renderFormField(field) {
+    if (field.type === 'select') return `<div class="form-group"><label for="field-${field.key}">${field.label}${field.required ? ' *' : ''}</label><select id="field-${field.key}" name="${field.key}" ${field.required ? 'required' : ''}>${(field.options || []).map(o => `<option value="${o}" ${o === field.default ? 'selected' : ''}>${o}</option>`).join('')}</select></div>`;
+    if (field.type === 'boolean') return `<div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="field-${field.key}" name="${field.key}" ${field.default ? 'checked' : ''} style="width:auto;accent-color:var(--accent)"> ${field.label}</label></div>`;
+    if (field.type === 'textarea') return `<div class="form-group"><label for="field-${field.key}">${field.label}${field.required ? ' *' : ''}</label><textarea id="field-${field.key}" name="${field.key}" placeholder="${field.placeholder || ''}" ${field.required ? 'required' : ''}></textarea></div>`;
+    return `<div class="form-group"><label for="field-${field.key}">${field.label}${field.required ? ' *' : ''}</label><input type="${field.type === 'password' ? 'password' : field.type === 'number' ? 'number' : 'text'}" id="field-${field.key}" name="${field.key}" placeholder="${field.placeholder || ''}" autocomplete="off" spellcheck="false" ${field.required ? 'required' : ''}></div>`;
+  }
+
+  function closeModal() { document.getElementById('connect-modal').classList.add('hidden'); }
+
+  async function submitConnection(e) {
+    e.preventDefault();
+    const btn = document.getElementById('connect-btn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving...';
+    const serviceId = document.getElementById('conn-service-id').value;
+    const editId = document.getElementById('conn-edit-id').value;
+    const name = document.getElementById('conn-name').value;
+    const svc = await api(`/catalog/${serviceId}`);
+    const config = {};
+    for (const f of svc.fields) { const el = document.getElementById(`field-${f.key}`); config[f.key] = f.type === 'boolean' ? el.checked : (el.value || f.default || ''); }
+    try {
+      const conn = editId
+        ? await api(`/connections/${editId}`, { method: 'PUT', body: JSON.stringify({ name, config }) })
+        : await api('/connections', { method: 'POST', body: JSON.stringify({ serviceId, name, config }) });
+      const test = await api(`/connections/${conn.id}/test`, { method: 'POST' });
+      closeModal();
+      toast(test.ok ? `${name} ${editId ? 'updated' : 'connected'} successfully` : `Saved but test failed: ${test.message}`, test.ok ? 'success' : 'error');
+      navigate('connections');
+    } catch (err) { toast(`Error: ${err.message}`, 'error'); }
+    finally { btn.disabled = false; btn.innerHTML = editId ? 'Save & Test' : 'Connect & Test'; }
+  }
+
+  // ─── Connections ──────────────────────────────────────────────────────────
+  async function loadConnections() {
+    try { connections = await api('/connections'); } catch (_) { connections = []; }
+    const c = document.getElementById('connections-list');
+    if (connections.length === 0) { c.innerHTML = '<div class="empty"><div class="empty-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div><h3>No connections yet</h3><p>Go to <a href="#" onclick="navigate(\'services\');return false" style="color:var(--accent);text-decoration:none">Services</a> to add one.</p></div>'; return; }
+    c.innerHTML = connections.map(renderConnectionItem).join('');
+  }
+
+  function renderConnectionItem(conn) {
+    const svcDef = findServiceInCatalog(conn.serviceId);
+    const cat = svcDef?._category || 'custom';
+    const avatarClass = catColors[cat] || 'cat-custom';
+    return `<div class="conn-item"><div class="conn-info"><div class="conn-avatar" style="background:var(--accent)">${getInitials(conn.name)}</div><div><div class="conn-name">${conn.name}</div><div class="conn-meta">${conn.serviceId} · ${conn.lastTestedAt ? 'Tested ' + new Date(conn.lastTestedAt).toLocaleString() : 'Not tested'}</div></div></div><div style="display:flex;align-items:center;gap:10px;"><span class="status status-${conn.status}">${conn.status}</span><div class="conn-actions"><button class="btn btn-sm btn-ghost" onclick="openEditModal('${conn.id}')">Edit</button><button class="btn btn-sm btn-ghost" onclick="testConn('${conn.id}',this)">Test</button><button class="btn btn-sm btn-danger" onclick="deleteConn('${conn.id}')">Delete</button></div></div></div>`;
+  }
+
+  function findServiceInCatalog(serviceId) {
+    for (const [cat, services] of Object.entries(catalog)) { const m = services.find(s => s.id === serviceId); if (m) { m._category = cat; return m; } }
+    return null;
+  }
+
+  async function testConn(id, btn) {
+    const orig = btn.innerHTML; btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
+    try { const r = await api(`/connections/${id}/test`, { method: 'POST' }); toast(r.ok ? 'Connection works!' : r.message, r.ok ? 'success' : 'error'); loadConnections(); }
+    finally { btn.innerHTML = orig; btn.disabled = false; }
+  }
+
+  async function deleteConn(id) {
+    showConfirmDialog('Remove this connection? This cannot be undone.', async () => {
+      try { await api(`/connections/${id}`, { method: 'DELETE' }); toast('Connection removed'); loadConnections(); }
+      catch (err) { toast(`Failed to delete: ${err.message}`, 'error'); }
+    });
+  }
+
+  // ─── MCP Agent Configs ────────────────────────────────────────────────────
+  async function loadAgentConfigs() {
+    const c = document.getElementById('agent-configs');
+    let configs;
+    try { configs = await api('/agent-configs'); } catch (_) { c.innerHTML = '<div class="empty"><h3>Could not load configs</h3></div>'; return; }
+    let html = '';
+    for (const [key, agent] of Object.entries(configs)) {
+      const json = JSON.stringify(agent.config, null, 2);
+      html += `<div class="agent-card"><h3>${agent.name}</h3><p class="instructions">${agent.instructions}</p><div class="file-path">${agent.file}</div><pre><code>${escapeHtml(json)}</code><button class="btn btn-sm copy-btn" onclick="copyConfig(this)">Copy</button></pre></div>`;
+    }
+    c.innerHTML = html;
+  }
+
+  function copyConfig(btn) {
+    const text = btn.closest('pre').querySelector('code').textContent;
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand('copy'); btn.textContent = 'Copied!'; } catch (_) { navigator.clipboard.writeText(text).then(() => btn.textContent = 'Copied!').catch(() => btn.textContent = 'Failed'); }
+    document.body.removeChild(ta); setTimeout(() => btn.textContent = 'Copy', 2000);
+  }
+
+  // ─── Active Tools ─────────────────────────────────────────────────────────
+  async function loadTools() {
+    const c = document.getElementById('tools-list');
+    let tools, registryTools;
+    try { tools = await api('/tools'); } catch (_) { tools = []; }
+    try { registryTools = await api('/registry/tools'); } catch (_) { registryTools = []; }
+    const allTools = [...tools, ...registryTools.map(t => ({ name: t.name, description: t.description, service: t._agentName || 'registry', connection: t._agentName || 'Onboarded Agent' }))];
+    if (allTools.length === 0) { c.innerHTML = '<div class="empty"><div class="empty-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div><h3>No tools yet</h3><p>Connect some services or onboard an agent first.</p></div>'; return; }
+    const grouped = {};
+    for (const t of allTools) { const k = t.connection || 'unknown'; if (!grouped[k]) grouped[k] = []; grouped[k].push(t); }
+    let html = `<p style="margin-bottom:16px;color:var(--text-tertiary);font-size:13px">${allTools.length} tool(s) from ${Object.keys(grouped).length} source(s)</p>`;
+    for (const [conn, ct] of Object.entries(grouped)) {
+      html += `<div class="cat-header">${conn}</div>`;
+      for (const t of ct) html += `<div class="tool-item"><div class="tool-name">${t.name}</div><div class="tool-desc">${t.description}</div><div class="tool-meta">${t.service}</div></div>`;
+    }
+    c.innerHTML = html;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CONNECTED AGENTS (Phase 2)
+  // ═══════════════════════════════════════════════════════════════════════════
+  async function loadAgents() {
+    const c = document.getElementById('agents-list');
+    try { agents = await api('/agents'); } catch (_) { agents = []; }
+    if (agents.length === 0) { c.innerHTML = '<div class="empty"><div class="empty-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><h3>No agents registered</h3><p>Register an external agent to enable agent-to-agent communication.</p></div>'; return; }
+    c.innerHTML = agents.map(renderAgentItem).join('');
+  }
+
+  function renderAgentItem(agent) {
+    const typeClass = `type-${agent.type || 'custom'}`;
+    const caps = (agent.capabilities || []).map(c => `<span class="agent-badge">${c}</span>`).join(' ');
+    return `<div class="agent-item"><div class="agent-info"><div class="agent-avatar ${typeClass}">${getInitials(agent.name)}</div><div><div class="agent-name">${agent.name}</div><div class="agent-meta">${agent.description || agent.type} · ${agent.protocol || 'mcp-stdio'}</div>${caps ? `<div style="margin-top:4px">${caps}</div>` : ''}</div></div><div style="display:flex;align-items:center;gap:10px;"><span class="status status-${agent.status || 'registered'}">${agent.status || 'registered'}</span><div class="conn-actions"><button class="btn btn-sm btn-ghost" onclick="editAgent('${agent.id}')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteAgent('${agent.id}')">Remove</button></div></div></div>`;
+  }
+
+  function openAgentModal(editData) {
+    document.getElementById('agent-name').value = editData?.name || '';
+    document.getElementById('agent-desc').value = editData?.description || '';
+    document.getElementById('agent-type').value = editData?.type || 'analysis';
+    document.getElementById('agent-endpoint').value = editData?.endpoint || '';
+    document.getElementById('agent-protocol').value = editData?.protocol || 'mcp-stdio';
+    document.getElementById('agent-capabilities').value = (editData?.capabilities || []).join(', ');
+    document.getElementById('agent-edit-id').value = editData?.id || '';
+    document.getElementById('agent-modal-title').textContent = editData ? `Edit ${editData.name}` : 'Register Agent';
+    document.getElementById('agent-submit-btn').textContent = editData ? 'Save' : 'Register';
+    document.getElementById('agent-modal').classList.remove('hidden');
+  }
+  function closeAgentModal() { document.getElementById('agent-modal').classList.add('hidden'); }
+
+  async function submitAgent(e) {
+    e.preventDefault();
+    const btn = document.getElementById('agent-submit-btn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+    const editId = document.getElementById('agent-edit-id').value;
+    const data = {
+      name: document.getElementById('agent-name').value,
+      description: document.getElementById('agent-desc').value,
+      type: document.getElementById('agent-type').value,
+      endpoint: document.getElementById('agent-endpoint').value,
+      protocol: document.getElementById('agent-protocol').value,
+      capabilities: document.getElementById('agent-capabilities').value.split(',').map(s => s.trim()).filter(Boolean),
+    };
+    try {
+      if (editId) await api(`/agents/${editId}`, { method: 'PUT', body: JSON.stringify(data) });
+      else await api('/agents', { method: 'POST', body: JSON.stringify(data) });
+      closeAgentModal(); toast(editId ? 'Agent updated' : 'Agent registered'); loadAgents();
+    } catch (err) { toast(`Error: ${err.message}`, 'error'); }
+    finally { btn.disabled = false; btn.textContent = editId ? 'Save' : 'Register'; }
+  }
+
+  async function editAgent(id) { const a = agents.find(a => a.id === id); if (a) openAgentModal(a); }
+  async function deleteAgent(id) { showConfirmDialog('Remove this agent?', async () => { try { await api(`/agents/${id}`, { method: 'DELETE' }); toast('Agent removed'); loadAgents(); } catch (err) { toast(`Failed: ${err.message}`, 'error'); } }); }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ONBOARD AGENT (Developer Registry)
+  // ═══════════════════════════════════════════════════════════════════════════
+  let registryAgents = [];
+
+  async function loadOnboard() {
+    const list = document.getElementById('registry-list');
+    try { registryAgents = await api('/registry/agents'); } catch (_) { registryAgents = []; }
+
+    // Stats
+    const tools = registryAgents.reduce((sum, a) => sum + (a.tools?.length || 0), 0);
+    document.getElementById('reg-stat-agents').textContent = registryAgents.length;
+    document.getElementById('reg-stat-healthy').textContent = registryAgents.filter(a => a.status === 'healthy').length;
+    document.getElementById('reg-stat-tools').textContent = tools;
+
+    if (registryAgents.length === 0) {
+      list.innerHTML = '<div class="empty"><div class="empty-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div><h3>No agents onboarded yet</h3><p>Click "Onboard Agent" to register your first agent.</p></div>';
+      return;
+    }
+    list.innerHTML = registryAgents.map(renderRegistryAgent).join('');
+  }
+
+  function renderRegistryAgent(agent) {
+    const statusClass = agent.status === 'healthy' ? 'status-connected' : agent.status === 'unhealthy' ? 'status-error' : 'status-configured';
+    const toolChips = (agent.tools || []).map(t =>
+      `<span class="reg-tool-chip" title="${escapeHtml(t.description)}">${t.name}</span>`
+    ).join('');
+    const healthInfo = agent.lastHealthCheck ? `Checked ${new Date(agent.lastHealthCheck).toLocaleString()}` : 'Not checked';
+    // Extract agent ID from endpoint URL for MCP link
+    const endpointMatch = (agent.endpoint || '').match(/\/agents\/([^/]+)\/execute/);
+    const builtAgentId = endpointMatch ? endpointMatch[1] : null;
+    const mcpUrl = builtAgentId ? `${location.origin}/mcp/agents/${builtAgentId}` : null;
+    const tag = agent.name.replace(/[^\w\s]/g,'').trim().replace(/\s+/g,'_').toLowerCase();
+    const configJson = mcpUrl ? JSON.stringify({servers:{[`snayu-${tag}`]:{type:'http',url:mcpUrl}}}, null, 2) : '';
+    return `<div class="reg-agent">
+      <div class="reg-agent-header">
+        <div class="reg-agent-info">
+          <div class="reg-agent-avatar">${getInitials(agent.name)}</div>
+          <div>
+            <div class="reg-agent-name">${escapeHtml(agent.name)}</div>
+            <div class="reg-agent-meta">${escapeHtml(agent.description || agent.protocol)} · by ${escapeHtml(agent.author)} · v${agent.version} · ${healthInfo}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="status ${statusClass}">${agent.status}</span>
+          <div class="conn-actions">
+            ${mcpUrl ? `<button class="btn btn-sm btn-ghost" onclick="toggleMcpConfig('reg-${agent.id}')" title="MCP Config">⚡</button>` : ''}
+            <button class="btn btn-sm btn-ghost" onclick="healthCheckRegistry('${agent.id}',this)">Health</button>
+            <button class="btn btn-sm btn-ghost" onclick="editRegistryAgent('${agent.id}')">Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteRegistryAgent('${agent.id}')">Remove</button>
+          </div>
+        </div>
+      </div>
+      ${toolChips ? `<div class="reg-agent-tools">${toolChips}</div>` : '<div style="font-size:12px;color:var(--text-tertiary)">No tools defined</div>'}
+      ${mcpUrl ? `<div id="mcp-config-reg-${agent.id}" class="hidden" style="margin-top:12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:12px;font-weight:600;color:var(--accent);">⚡ Individual MCP Endpoint</span>
+          <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${mcpUrl}');toast('URL copied!')">Copy URL</button>
+        </div>
+        <div style="font-size:11px;color:var(--text-tertiary);font-family:var(--font-mono);margin-bottom:10px;word-break:break-all;">${mcpUrl}</div>
+        <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">VS Code — add to .vscode/mcp.json:</div>
+        <pre style="font-size:11px;margin:0;position:relative;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;overflow-x:auto;"><code>${configJson.replace(/</g,'&lt;')}</code><button class="btn btn-sm" style="position:absolute;top:6px;right:6px;font-size:10px;" onclick="navigator.clipboard.writeText(JSON.stringify({servers:{'snayu-${tag}':{type:'http',url:'${mcpUrl}'}}},null,2));toast('Config copied!')">Copy</button></pre>
+        <div style="margin-top:8px;display:flex;gap:6px;">
+          <button class="btn btn-sm" onclick="window.open('/mcp/agents/${builtAgentId}/config','_blank')">All IDE Configs</button>
+        </div>
+      </div>` : ''}
+    </div>`;
+  }
+
+  async function healthCheckRegistry(id, btn) {
+    const orig = btn.innerHTML; btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
+    try {
+      const r = await api(`/registry/agents/${id}/health`, { method: 'POST' });
+      toast(r.ok ? 'Agent is healthy!' : `Unhealthy: ${r.message}`, r.ok ? 'success' : 'error');
+      loadOnboard();
+    } catch (err) { toast(`Health check failed: ${err.message}`, 'error'); }
+    finally { btn.innerHTML = orig; btn.disabled = false; }
+  }
+
+  async function deleteRegistryAgent(id) {
+    showConfirmDialog('Remove this onboarded agent? Its tools will no longer be available to users.', async () => {
+      try { await api(`/registry/agents/${id}`, { method: 'DELETE' }); toast('Agent removed'); loadOnboard(); }
+      catch (err) { toast(`Failed: ${err.message}`, 'error'); }
+    });
+  }
+
+  // ─── Onboard Modal ────────────────────────────────────────────────────────
+  let toolRowCounter = 0;
+
+  function addToolRow(name, desc) {
+    const id = ++toolRowCounter;
+    const container = document.getElementById('ob-tools-list');
+    const row = document.createElement('div');
+    row.className = 'tool-row';
+    row.id = `tool-row-${id}`;
+    row.innerHTML = `<input type="text" placeholder="tool_name" value="${name || ''}" class="ob-tool-name" required>
+      <input type="text" placeholder="Description of what this tool does" value="${desc || ''}" class="ob-tool-desc" required>
+      <button type="button" class="tool-row-remove" onclick="this.parentElement.remove()">×</button>`;
+    container.appendChild(row);
+  }
+
+  function openOnboardModal(editData) {
+    document.getElementById('ob-name').value = editData?.name || '';
+    document.getElementById('ob-desc').value = editData?.description || '';
+    document.getElementById('ob-author').value = editData?.author || '';
+    document.getElementById('ob-version').value = editData?.version || '1.0.0';
+    document.getElementById('ob-endpoint').value = editData?.endpoint || '';
+    document.getElementById('ob-health').value = editData?.healthEndpoint || '';
+    document.getElementById('ob-protocol').value = editData?.protocol || 'http';
+    document.getElementById('ob-edit-id').value = editData?.id || '';
+    document.getElementById('onboard-modal-title').textContent = editData ? `Edit ${editData.name}` : 'Onboard Your Agent';
+    document.getElementById('ob-submit-btn').textContent = editData ? 'Save' : 'Onboard';
+
+    // Populate tools
+    document.getElementById('ob-tools-list').innerHTML = '';
+    toolRowCounter = 0;
+    if (editData?.tools?.length) {
+      for (const t of editData.tools) addToolRow(t.name, t.description);
+    } else {
+      addToolRow(); // Start with one empty row
+    }
+
+    document.getElementById('onboard-modal').classList.remove('hidden');
+  }
+
+  function closeOnboardModal() { document.getElementById('onboard-modal').classList.add('hidden'); }
+
+  async function editRegistryAgent(id) {
+    const a = registryAgents.find(x => x.id === id);
+    if (a) openOnboardModal(a);
+  }
+
+  async function submitOnboard(e) {
+    e.preventDefault();
+    const btn = document.getElementById('ob-submit-btn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+    const editId = document.getElementById('ob-edit-id').value;
+
+    // Collect tools from rows
+    const rows = document.querySelectorAll('#ob-tools-list .tool-row');
+    const tools = [];
+    for (const row of rows) {
+      const name = row.querySelector('.ob-tool-name').value.trim();
+      const desc = row.querySelector('.ob-tool-desc').value.trim();
+      if (name && desc) tools.push({ name, description: desc });
+    }
+
+    if (tools.length === 0) {
+      toast('Add at least one tool', 'error');
+      btn.disabled = false; btn.textContent = editId ? 'Save' : 'Onboard';
+      return;
+    }
+
+    const data = {
+      name: document.getElementById('ob-name').value,
+      description: document.getElementById('ob-desc').value,
+      author: document.getElementById('ob-author').value,
+      version: document.getElementById('ob-version').value,
+      endpoint: document.getElementById('ob-endpoint').value,
+      healthEndpoint: document.getElementById('ob-health').value || null,
+      protocol: document.getElementById('ob-protocol').value,
+      tools,
+    };
+
+    try {
+      if (editId) {
+        await api(`/registry/agents/${editId}`, { method: 'PUT', body: JSON.stringify(data) });
+        toast('Agent updated successfully!', 'success');
+      } else {
+        const result = await api('/registry/agents', { method: 'POST', body: JSON.stringify(data) });
+        if (result.healthResult?.ok) {
+          toast(`✅ Agent "${result.name}" onboarded & healthy! ${result.tools?.length || 0} tool(s) now available.`, 'success');
+        } else {
+          toast(`⚠️ Agent "${result.name}" registered but health check failed: ${result.healthResult?.message || 'unreachable'}. It will appear as unhealthy until your agent is running.`, 'warning');
+        }
+      }
+      closeOnboardModal();
+      loadOnboard();
+    } catch (err) { toast(`❌ ${err.message}`, 'error'); }
+    finally { btn.disabled = false; btn.textContent = editId ? 'Save' : 'Onboard'; }
+  }
+
+  // ─── Agent Builder ─────────────────────────────────────────────────────────
+
+  let builderTools = [];
+
+  async function loadBuilder() {
+    try {
+      const [agents, tools] = await Promise.all([
+        api('/builder/agents'),
+        api('/builder/tools')
+      ]);
+      builderTools = tools;
+      const active = agents.filter(a => a.status === 'active').length;
+      const totalExecs = agents.reduce((s, a) => s + (a.executions || 0), 0);
+      document.getElementById('builder-stat-agents').textContent = agents.length;
+      document.getElementById('builder-stat-active').textContent = active;
+      document.getElementById('builder-stat-executions').textContent = totalExecs;
+      document.getElementById('builder-stat-tools').textContent = tools.length;
+
+      const list = document.getElementById('built-agents-list');
+      const empty = document.getElementById('builder-empty');
+      if (agents.length === 0) { list.innerHTML = ''; empty.classList.remove('hidden'); }
+      else {
+      empty.classList.add('hidden');
+
+      list.innerHTML = agents.map(a => {
+        const mcpUrl = `${location.origin}/mcp/agents/${a.id}`;
+        const tag = a.name.replace(/[^\w\s]/g,'').trim().replace(/\s+/g,'_').toLowerCase();
+        const configJson = JSON.stringify({servers:{[`snayu-${tag}`]:{type:'http',url:mcpUrl}}}, null, 2);
+        return `
+        <div class="reg-agent">
+          <div class="reg-agent-header">
+            <div class="reg-agent-info">
+              <div class="reg-agent-avatar">${a.name.charAt(0).toUpperCase()}</div>
+              <div>
+                <div class="reg-agent-name">${a.name}</div>
+                <div class="reg-agent-meta">${a.description || 'No description'} · ${a.tools.length} tools · ${a.executions || 0} runs</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <span class="status status-${a.status === 'active' ? 'connected' : 'configured'}">${a.status}</span>
+              <button class="btn btn-sm" onclick="executeBuiltAgent('${a.id}')">▶ Run</button>
+              <button class="btn btn-sm" onclick="toggleMcpConfig('${a.id}')" title="MCP Config">⚡</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteBuiltAgent('${a.id}')">✕</button>
+            </div>
+          </div>
+          <div class="reg-agent-tools">${a.tools.map(t => `<span class="reg-tool-chip">${t}</span>`).join('')}</div>
+          <div id="mcp-config-${a.id}" class="hidden" style="margin-top:12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:12px;font-weight:600;color:var(--accent);">⚡ Individual MCP Endpoint</span>
+              <button class="btn btn-sm" onclick="navigator.clipboard.writeText(\`${mcpUrl}\`);toast('URL copied!')">Copy URL</button>
+            </div>
+            <div style="font-size:11px;color:var(--text-tertiary);font-family:var(--font-mono);margin-bottom:10px;word-break:break-all;">${mcpUrl}</div>
+            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">VS Code — add to .vscode/mcp.json:</div>
+            <pre style="font-size:11px;margin:0;position:relative;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;overflow-x:auto;"><code>${configJson.replace(/</g,'&lt;')}</code><button class="btn btn-sm" style="position:absolute;top:6px;right:6px;font-size:10px;" onclick="navigator.clipboard.writeText(JSON.stringify({servers:{'snayu-${tag}':{type:'http',url:'${mcpUrl}'}}},null,2));toast('Config copied!')">Copy</button></pre>
+            <div style="margin-top:8px;display:flex;gap:6px;">
+              <button class="btn btn-sm" onclick="window.open('/mcp/agents/${a.id}/config','_blank')">All IDE Configs</button>
+            </div>
+          </div>
+          ${a.trigger?.type === 'webhook' ? `<div style="margin-top:10px;font-size:11px;color:var(--text-tertiary);font-family:var(--font-mono);">Webhook: POST /api/builder/webhook/${a.id}</div>` : ''}
+          ${a.lastExecution ? `<div style="margin-top:6px;font-size:11px;color:var(--text-tertiary);">Last run: ${new Date(a.lastExecution).toLocaleString()}</div>` : ''}
+        </div>
+      `}).join('');
+      }
+    } catch (err) { toast('Failed to load builder: ' + err.message, 'error'); }
+
+    // Also load templates and prompts for the prompt selector
+    try { await loadTemplates(); } catch (_) {}
+    try {
+      if (allPrompts.length === 0) { allPrompts = await api('/prompts'); }
+      const sel = document.getElementById('builder-prompt-select');
+      sel.innerHTML = '<option value="">— Use a prompt from library —</option>' +
+        allPrompts.map(p => `<option value="${p.id}">${p.name} (${p.category})</option>`).join('');
+    } catch (_) {}
+  }
+
+  function openBuilderModal(editId) {
+    document.getElementById('builder-edit-id').value = editId || '';
+    document.getElementById('builder-modal-title').textContent = editId ? 'Edit Agent' : 'Create Agent';
+    document.getElementById('builder-name').value = '';
+    document.getElementById('builder-desc').value = '';
+    document.getElementById('builder-prompt').value = '';
+    document.getElementById('builder-trigger').value = 'manual';
+    document.getElementById('builder-llm').value = 'none';
+
+    // Render tool checkboxes
+    const container = document.getElementById('builder-tools-list');
+    container.innerHTML = builderTools.length === 0
+      ? '<p style="color:var(--text-tertiary);font-size:12px;padding:8px;">No tools available. Connect a service first.</p>'
+      : builderTools.map(t => `
+        <label style="display:flex;align-items:flex-start;gap:8px;padding:6px 4px;cursor:pointer;border-bottom:1px solid var(--border);">
+          <input type="checkbox" value="${t.name}" style="margin-top:2px;">
+          <div><div style="font-size:12px;font-weight:600;color:var(--accent2);font-family:var(--font-mono);">${t.name}</div>
+          <div style="font-size:11px;color:var(--text-tertiary);">${t.description || ''}</div></div>
+        </label>
+      `).join('');
+
+    document.getElementById('builder-modal').classList.remove('hidden');
+  }
+
+  function closeBuilderModal() {
+    document.getElementById('builder-modal').classList.add('hidden');
+  }
+
+  document.getElementById('builder-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const editId = document.getElementById('builder-edit-id').value;
+    const selectedTools = [...document.querySelectorAll('#builder-tools-list input:checked')].map(c => c.value);
+    if (selectedTools.length === 0) { toast('Select at least one tool', 'error'); return; }
+
+    const data = {
+      name: document.getElementById('builder-name').value.trim(),
+      description: document.getElementById('builder-desc').value.trim(),
+      systemPrompt: document.getElementById('builder-prompt').value.trim(),
+      tools: selectedTools,
+      trigger: { type: document.getElementById('builder-trigger').value },
+      llm: { provider: document.getElementById('builder-llm').value },
+    };
+
+    try {
+      if (editId) {
+        await api(`/builder/agents/${editId}`, { method: 'PUT', body: JSON.stringify(data) });
+        toast('Agent updated!', 'success');
+      } else {
+        await api('/builder/agents', { method: 'POST', body: JSON.stringify(data) });
+        toast(`Agent "${data.name}" created with ${selectedTools.length} tools!`, 'success');
+      }
+      closeBuilderModal();
+      loadBuilder();
+    } catch (err) { toast('❌ ' + err.message, 'error'); }
+  });
+
+  function toggleMcpConfig(agentId) {
+    const el = document.getElementById('mcp-config-' + agentId);
+    if (el) el.classList.toggle('hidden');
+  }
+
+  async function executeBuiltAgent(id) {
+    const input = prompt('Enter input for the agent (JSON or plain text):');
+    if (input === null) return;
+    try {
+      let parsedInput;
+      try { parsedInput = JSON.parse(input); } catch { parsedInput = { input }; }
+      toast('Running agent...', 'success');
+      const result = await api(`/builder/agents/${id}/execute`, { method: 'POST', body: JSON.stringify({ input: parsedInput }) });
+      console.log('Agent result:', result);
+      toast(`✅ Agent completed in ${result.duration}ms — ${result.results.length} step(s)`, 'success');
+      loadBuilder();
+    } catch (err) { toast('❌ ' + err.message, 'error'); }
+  }
+
+  async function deleteBuiltAgent(id) {
+    if (!confirm('Delete this agent?')) return;
+    try {
+      await api(`/builder/agents/${id}`, { method: 'DELETE' });
+      toast('Agent deleted', 'success');
+      loadBuilder();
+    } catch (err) { toast('❌ ' + err.message, 'error'); }
+  }
+
+  // ─── Templates ────────────────────────────────────────────────────────────
+
+  async function loadTemplates() {
+    try {
+      const templates = await api('/builder/templates');
+      const grid = document.getElementById('templates-grid');
+      grid.innerHTML = templates.map(t => `
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;transition:border-color .15s;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+            <div style="font-size:14px;font-weight:600;">${t.name}</div>
+            <button class="btn btn-sm btn-primary" onclick="installTemplate('${t.id}')">Install</button>
+          </div>
+          <div style="font-size:12px;color:var(--text-tertiary);line-height:1.4;margin-bottom:10px;">${t.description}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;">${t.tools.slice(0, 4).map(tool => `<span class="reg-tool-chip">${tool}</span>`).join('')}${t.tools.length > 4 ? `<span class="reg-tool-chip">+${t.tools.length - 4}</span>` : ''}</div>
+        </div>
+      `).join('');
+    } catch (err) { console.error('Templates load failed:', err); }
+  }
+
+  async function installTemplate(templateId) {
+    try {
+      const result = await api(`/builder/templates/${templateId}/install`, { method: 'POST' });
+      toast(`✅ Agent "${result.name}" installed!`, 'success');
+      loadBuilder();
+    } catch (err) { toast('❌ ' + err.message, 'error'); }
+  }
+
+  // ─── Prompt Registry ──────────────────────────────────────────────────────
+
+  let allPrompts = [];
+
+  async function loadPrompts() {
+    try {
+      const [prompts, categories] = await Promise.all([
+        api('/prompts'),
+        api('/prompts/categories')
+      ]);
+      allPrompts = prompts;
+
+      // Render category stats
+      document.getElementById('prompt-categories').innerHTML = categories.map(c => `
+        <div class="stat-card" style="cursor:pointer;" onclick="filterPrompts('${c.id}')">
+          <div class="value">${c.count}</div>
+          <div class="label">${c.name}</div>
+        </div>
+      `).join('');
+
+      renderPrompts(prompts);
+    } catch (err) { toast('Failed to load prompts: ' + err.message, 'error'); }
+  }
+
+  function filterPrompts(category) {
+    const filtered = category === 'all' ? allPrompts : allPrompts.filter(p => p.category === category);
+    renderPrompts(filtered);
+  }
+
+  function renderPrompts(prompts) {
+    const list = document.getElementById('prompts-list');
+    const grouped = {};
+    prompts.forEach(p => { (grouped[p.category] = grouped[p.category] || []).push(p); });
+
+    list.innerHTML = Object.entries(grouped).map(([cat, items]) => `
+      <div class="cat-header">${cat}</div>
+      ${items.map(p => `
+        <div class="agent-card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+              <h3>${p.name} ${p.custom ? '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--accent-subtle);color:var(--accent2);">custom</span>' : ''}</h3>
+              <div class="instructions">${p.description}</div>
+            </div>
+            <div style="display:flex;gap:4px;">
+              <button class="btn btn-sm" onclick="usePromptInBuilder('${p.id}')">Use in Agent</button>
+              ${p.custom ? `<button class="btn btn-sm btn-danger" onclick="deletePrompt('${p.id}')">✕</button>` : ''}
+            </div>
+          </div>
+          <pre style="margin-top:10px;white-space:pre-wrap;font-size:11px;max-height:120px;overflow-y:auto;">${p.prompt}</pre>
+          ${p.suggestedTools?.length ? `<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:4px;">${p.suggestedTools.map(t => `<span class="reg-tool-chip">${t}</span>`).join('')}</div>` : ''}
+        </div>
+      `).join('')}
+    `).join('');
+  }
+
+  function openPromptModal() { document.getElementById('prompt-modal').classList.remove('hidden'); }
+  function closePromptModal() { document.getElementById('prompt-modal').classList.add('hidden'); }
+
+  document.getElementById('prompt-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      await api('/prompts', { method: 'POST', body: JSON.stringify({
+        name: document.getElementById('prompt-name').value,
+        category: document.getElementById('prompt-category').value,
+        description: document.getElementById('prompt-description').value,
+        prompt: document.getElementById('prompt-content').value,
+      })});
+      toast('Prompt saved!', 'success');
+      closePromptModal();
+      loadPrompts();
+    } catch (err) { toast('❌ ' + err.message, 'error'); }
+  });
+
+  async function deletePrompt(id) {
+    if (!confirm('Delete this custom prompt?')) return;
+    try {
+      await api(`/prompts/${id}`, { method: 'DELETE' });
+      toast('Prompt deleted', 'success');
+      loadPrompts();
+    } catch (err) { toast('❌ ' + err.message, 'error'); }
+  }
+
+  function usePromptInBuilder(promptId) {
+    const p = allPrompts.find(x => x.id === promptId);
+    if (!p) return;
+    navigate('builder');
+    setTimeout(() => {
+      openBuilderModal();
+      document.getElementById('builder-prompt').value = p.prompt;
+      document.getElementById('builder-name').value = p.name;
+      document.getElementById('builder-desc').value = p.description;
+    }, 100);
+  }
+
+  async function applyPromptTemplate(promptId) {
+    if (!promptId) return;
+    try {
+      const p = allPrompts.length > 0 ? allPrompts.find(x => x.id === promptId) : await api(`/prompts/${promptId}`);
+      if (p) {
+        document.getElementById('builder-prompt').value = p.prompt;
+        // Auto-check suggested tools
+        if (p.suggestedTools) {
+          document.querySelectorAll('#builder-tools-list input').forEach(cb => {
+            if (p.suggestedTools.includes(cb.value)) cb.checked = true;
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  // ─── Init ─────────────────────────────────────────────────────────────────
+  (async () => {
+    document.getElementById('connect-modal').addEventListener('mousedown', (e) => { if (e.target.id === 'connect-modal') closeModal(); });
+    document.getElementById('modal-inner').addEventListener('mousedown', (e) => e.stopPropagation());
+    document.getElementById('cancel-btn').addEventListener('click', closeModal);
+    document.getElementById('connect-form').addEventListener('submit', submitConnection);
+    document.getElementById('agent-modal').addEventListener('mousedown', (e) => { if (e.target.id === 'agent-modal') closeAgentModal(); });
+    document.getElementById('agent-modal-inner').addEventListener('mousedown', (e) => e.stopPropagation());
+    document.getElementById('agent-form').addEventListener('submit', submitAgent);
+    document.getElementById('onboard-modal').addEventListener('mousedown', (e) => { if (e.target.id === 'onboard-modal') closeOnboardModal(); });
+    document.getElementById('onboard-modal-inner').addEventListener('mousedown', (e) => e.stopPropagation());
+    document.getElementById('onboard-form').addEventListener('submit', submitOnboard);
+    document.getElementById('builder-modal').addEventListener('mousedown', (e) => { if (e.target.id === 'builder-modal') closeBuilderModal(); });
+    document.getElementById('prompt-modal').addEventListener('mousedown', (e) => { if (e.target.id === 'prompt-modal') closePromptModal(); });
+    try { catalog = await api('/catalog'); } catch (_) { catalog = {}; }
+    navigate('dashboard');
+  })();
+</script>
+</body>
+</html>

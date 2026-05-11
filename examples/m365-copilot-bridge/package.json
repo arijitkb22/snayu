@@ -1,0 +1,12 @@
+{
+  "name": "m365-copilot-bridge",
+  "version": "1.0.0",
+  "description": "Bridge adapter to connect M365 Copilot agents to Snayu via DirectLine API",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0"
+  }
+}

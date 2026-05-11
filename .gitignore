@@ -1,0 +1,10 @@
+node_modules/
+data/
+.env
+.env.*
+*.log
+*.mjs
+*.py
+*.bak
+.DS_Store
+wiki/
