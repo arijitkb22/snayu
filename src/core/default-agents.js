@@ -677,14 +677,108 @@ This hybrid model is what makes you unique. You can trace a bug from a Jira tick
   },
 ];
 
+// ─── Role Metadata ──────────────────────────────────────────────────────────
+// Maps agent template IDs to the roles that benefit from them.
+const AGENT_ROLES = {
+  "tpl-aws-infra-investigator":  ["engineer", "devops", "sre"],
+  "tpl-defect-triage":           ["engineer", "devops", "pm"],
+  "tpl-pr-review":               ["engineer", "devops", "lead"],
+  "tpl-security-log-scanner":    ["devops", "sre", "security"],
+  "tpl-incident-response":       ["devops", "sre", "manager"],
+  "tpl-bug-investigation":       ["engineer", "devops"],
+  "tpl-service-health":          ["devops", "sre", "manager"],
+  "tpl-db-performance":          ["engineer", "devops", "dba"],
+  "tpl-db-schema-reviewer":      ["engineer", "dba"],
+  "tpl-db-data-explorer":        ["engineer", "data", "pm"],
+  "tpl-db-migration-helper":     ["engineer", "dba"],
+  "tpl-daily-standup":           ["engineer", "pm", "manager"],
+  "tpl-exec-summary":            ["pm", "manager", "lead"],
+  "tpl-s3-data-inventory":       ["devops", "data", "security"],
+  "tpl-ci-cd-monitor":           ["devops", "sre"],
+  "tpl-data-quality-checker":    ["engineer", "data", "dba"],
+};
+
+// ─── Connection type mappings ────────────────────────────────────────────────
+const TOOL_PREFIX_TO_SERVICE = {
+  cloudwatch: "aws_cloudwatch",
+  postgresql: "postgresql",
+  dynamodb: "dynamodb",
+  s3: "aws_s3",
+  teams: "teams",
+  slack: "slack",
+  jira: "jira",
+  github: "github",
+  sqs: "aws_sqs",
+  lambda: "aws_lambda",
+  ec2: "aws_ec2",
+  rds: "aws_rds",
+  sns: "aws_sns",
+  ecs: "aws_ecs",
+  route53: "aws_route53",
+  iam: "aws_iam",
+  eks: "aws_eks",
+};
+
+/**
+ * Derive required connection service IDs from an agent's tool patterns.
+ */
+function deriveRequiredConnections(tools) {
+  const services = new Set();
+  for (const tool of tools) {
+    const prefix = tool.split("__")[0];
+    if (TOOL_PREFIX_TO_SERVICE[prefix]) services.add(TOOL_PREFIX_TO_SERVICE[prefix]);
+  }
+  return [...services];
+}
+
+/**
+ * Check which connections an agent needs but are missing.
+ * @param {string} templateId - Agent template ID
+ * @param {object[]} activeConnections - Array of active connection objects with .serviceId
+ * @returns {{ agent: object, missing: string[], available: string[] }}
+ */
+export function checkSkillGap(templateId, activeConnections) {
+  const agent = getDefaultAgent(templateId);
+  if (!agent) return null;
+  const required = deriveRequiredConnections(agent.tools);
+  const activeServiceIds = new Set(activeConnections.map(c => {
+    const sid = c.serviceId || "";
+    // Normalize: "aws_cloudwatch" → "aws_cloudwatch", etc.
+    return sid;
+  }));
+  const available = required.filter(s => activeServiceIds.has(s));
+  const missing = required.filter(s => !activeServiceIds.has(s));
+  return { agent: { id: agent.id, name: agent.name }, required, available, missing };
+}
+
 export function getDefaultAgents() {
-  return DEFAULT_AGENTS;
+  return DEFAULT_AGENTS.map(a => ({
+    ...a,
+    roles: AGENT_ROLES[a.id] || [],
+    requiredConnections: deriveRequiredConnections(a.tools),
+  }));
 }
 
 export function getDefaultAgent(templateId) {
-  return DEFAULT_AGENTS.find(a => a.id === templateId) || null;
+  const a = DEFAULT_AGENTS.find(a => a.id === templateId) || null;
+  if (!a) return null;
+  return { ...a, roles: AGENT_ROLES[a.id] || [], requiredConnections: deriveRequiredConnections(a.tools) };
 }
 
 export function getDefaultAgentsByCategory(category) {
-  return DEFAULT_AGENTS.filter(a => a.category === category);
+  return DEFAULT_AGENTS.filter(a => a.category === category).map(a => ({
+    ...a,
+    roles: AGENT_ROLES[a.id] || [],
+    requiredConnections: deriveRequiredConnections(a.tools),
+  }));
+}
+
+export function getDefaultAgentsByRole(role) {
+  return DEFAULT_AGENTS
+    .filter(a => (AGENT_ROLES[a.id] || []).includes(role))
+    .map(a => ({
+      ...a,
+      roles: AGENT_ROLES[a.id] || [],
+      requiredConnections: deriveRequiredConnections(a.tools),
+    }));
 }

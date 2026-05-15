@@ -7,6 +7,7 @@
  */
 
 import { getActiveConnections, getConnection, getAllConnections, updateConnectionStatus } from "./registry.js";
+import { governedExecute, isEnabled as governanceEnabled } from "../governance/index.js";
 
 // ─── Adapter module map ──────────────────────────────────────────────────────
 const ADAPTER_MODULES = {
@@ -18,6 +19,14 @@ const ADAPTER_MODULES = {
   // Cloud
   aws_s3:         () => import("../adapters/s3.js"),
   aws_cloudwatch: () => import("../adapters/cloudwatch.js"),
+  aws_lambda:     () => import("../adapters/lambda.js"),
+  aws_ec2:        () => import("../adapters/ec2.js"),
+  aws_rds:        () => import("../adapters/rds.js"),
+  aws_sns:        () => import("../adapters/sns.js"),
+  aws_ecs:        () => import("../adapters/ecs.js"),
+  aws_route53:    () => import("../adapters/route53.js"),
+  aws_iam:        () => import("../adapters/iam.js"),
+  aws_eks:        () => import("../adapters/eks.js"),
   // Search
   elasticsearch:  () => import("../adapters/elasticsearch.js"),
   // DevOps
@@ -48,8 +57,12 @@ const ADAPTER_MODULES = {
   kubernetes:     () => import("../adapters/kubernetes.js"),
   // Message Queues
   aws_sqs:        () => import("../adapters/sqs.js"),
+  // Data Platform
+  databricks:     () => import("../adapters/databricks.js"),
   // Security / SIEM
   splunk:         () => import("../adapters/splunk.js"),
+  // Governance (built-in)
+  governance:     () => import("../adapters/governance.js"),
 };
 
 // ─── Live adapter instances ──────────────────────────────────────────────────
@@ -91,6 +104,19 @@ export async function initializeAll() {
     }
   }
   console.error(`[adapter-manager] Loaded ${adapters.size} adapter(s)`);
+
+  // Auto-load built-in governance adapter
+  if (!adapters.has("__governance__")) {
+    try {
+      const mod = await import("../adapters/governance.js");
+      const Adapter = mod.default;
+      const adapter = new Adapter({ id: "governance", connectionId: "__governance__", serviceId: "governance", name: "Governance", config: {} });
+      await adapter.connect();
+      adapters.set("__governance__", adapter);
+    } catch (e) {
+      console.error(`[adapter-manager] Governance adapter failed: ${e.message}`);
+    }
+  }
 }
 
 /**
@@ -134,16 +160,33 @@ export function collectAllTools() {
 /**
  * Execute a tool by its full name, routing to the correct adapter.
  */
-export async function executeTool(toolName, params) {
-  // Tools are registered with their connection ID prefix
+export async function executeTool(toolName, params, meta = {}) {
+  const rawExecute = async (name, args, _connId) => {
+    for (const [connId, adapter] of adapters) {
+      const tools = adapter.getTools();
+      const match = tools.find(t => t.name === name);
+      if (match) {
+        return adapter.executeTool(name, args);
+      }
+    }
+    throw new Error(`Tool not found: ${name}`);
+  };
+
+  // Find which connection owns this tool (for governance context)
+  let connectionId;
   for (const [connId, adapter] of adapters) {
-    const tools = adapter.getTools();
-    const match = tools.find(t => t.name === toolName);
-    if (match) {
-      return adapter.executeTool(toolName, params);
+    if (adapter.getTools().find(t => t.name === toolName)) {
+      connectionId = connId;
+      break;
     }
   }
-  throw new Error(`Tool not found: ${toolName}`);
+
+  if (governanceEnabled()) {
+    const governed = governedExecute(rawExecute);
+    const conn = connectionId ? getConnection(connectionId) : null;
+    return governed(toolName, params, connectionId, { ...meta, mode: conn?.mode, connectionName: conn?.name });
+  }
+  return rawExecute(toolName, params);
 }
 
 /**

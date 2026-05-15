@@ -32,6 +32,7 @@ import {
   unloadAdapter,
   reloadAll,
 } from "../core/adapter-manager.js";
+import { forceRefresh as forceAwsRefresh } from "../core/aws-credentials.js";
 import {
   collectRegistryTools,
   executeRegistryTool,
@@ -241,6 +242,33 @@ server.tool(
     deleteConnection(connectionId);
     return {
       content: [{ type: "text", text: `Connection ${connectionId} removed.` }],
+    };
+  }
+);
+
+server.tool(
+  "connector_refresh_aws",
+  "Refresh AWS credentials for all AWS connections. Call this when you get 'security token expired' errors. Re-reads ~/.aws/credentials and reloads all AWS adapters.",
+  {
+    profile: z.string().optional().describe("AWS profile name (default: 'default')"),
+  },
+  async ({ profile }) => {
+    const p = profile || "default";
+    forceAwsRefresh(p);
+    // Reload all AWS connections with this profile
+    const allConns = getActiveConnections();
+    const awsIds = ["cloudwatch","s3","dynamodb","sqs","lambda","ec2","rds","sns","ecs","route53","iam","eks"];
+    let reloaded = 0;
+    for (const conn of allConns) {
+      const sid = conn.serviceId || "";
+      const isAws = sid.startsWith("aws_") || awsIds.includes(sid);
+      if (isAws && (conn.config?.profile || "default") === p) {
+        try { await unloadAdapter(conn.id); } catch (_) {}
+        try { await loadAdapter(conn.id); reloaded++; } catch (_) {}
+      }
+    }
+    return {
+      content: [{ type: "text", text: `AWS credentials refreshed for profile [${p}] — ${reloaded} connection(s) reloaded. Try your AWS operation again.` }],
     };
   }
 );
@@ -530,7 +558,18 @@ async function registerDynamicTools() {
         tool.description,
         tool.schema,
         async (params) => {
-          return executeTool(tool.name, params);
+          // Lazily capture client info on first tool call (handshake is complete by then)
+          if (!mcpClientInfo) {
+            try {
+              mcpClientInfo = server.server.getClientVersion?.() || null;
+              if (mcpClientInfo) console.error(`[snayu] Client: ${mcpClientInfo.name || 'unknown'} v${mcpClientInfo.version || '?'}`);
+            } catch { /* not available */ }
+          }
+          const client = mcpClientInfo;
+          return executeTool(tool.name, params, {
+            callerClient: client?.name,
+            callerVersion: client?.version,
+          });
         }
       );
     } catch (e) {
@@ -772,6 +811,9 @@ server.tool(
 );
 
 // ─── Start ────────────────────────────────────────────────────────────────────
+// Client info captured after MCP handshake
+let mcpClientInfo = null;
+
 async function main() {
   console.error("[snayu] Starting MCP server...");
 
@@ -786,6 +828,14 @@ async function main() {
   await server.connect(transport);
 
   console.error("[snayu] MCP server running — ready for AI agents");
+}
+
+/**
+ * Get the current MCP client info (name, version).
+ * Available after the MCP handshake completes.
+ */
+export function getMcpClientInfo() {
+  return mcpClientInfo;
 }
 
 main().catch(e => {

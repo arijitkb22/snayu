@@ -17,6 +17,23 @@ const CONNECTIONS_FILE = path.join(DATA_DIR, "connections.json");
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(CONNECTIONS_FILE)) fs.writeFileSync(CONNECTIONS_FILE, "{}");
 
+// ─── AWS Regions ─────────────────────────────────────────────────────────────
+const AWS_REGIONS = [
+  "us-east-1", "us-east-2", "us-west-1", "us-west-2",
+  "ap-south-1", "ap-south-2", "ap-southeast-1", "ap-southeast-2", "ap-southeast-3", "ap-southeast-4",
+  "ap-northeast-1", "ap-northeast-2", "ap-northeast-3", "ap-east-1",
+  "ca-central-1", "ca-west-1",
+  "eu-central-1", "eu-central-2", "eu-west-1", "eu-west-2", "eu-west-3", "eu-north-1", "eu-south-1", "eu-south-2",
+  "sa-east-1",
+  "me-south-1", "me-central-1",
+  "af-south-1",
+  "il-central-1",
+];
+
+const awsRegionField = (defaultRegion = "us-east-1") => ({
+  key: "region", label: "AWS Region", type: "select", required: true, options: AWS_REGIONS, default: defaultRegion,
+});
+
 // ─── Service Catalog ─────────────────────────────────────────────────────────
 // Every service the connector knows about, with its required fields.
 const SERVICE_CATALOG = {
@@ -71,7 +88,7 @@ const SERVICE_CATALOG = {
     description: "Connect to Amazon DynamoDB",
     connectionType: "aws",
     fields: [
-      { key: "region", label: "AWS Region", type: "text", required: true, default: "ap-south-1" },
+      awsRegionField("ap-south-1"),
       { key: "authMode", label: "Auth Mode", type: "select", required: true, options: ["credentials-file", "static-keys"], default: "credentials-file" },
       { key: "profile", label: "AWS Profile (for credentials file)", type: "text", required: false, default: "default" },
       { key: "refreshIntervalMins", label: "Credential refresh interval (minutes)", type: "number", required: false, default: 55 },
@@ -90,7 +107,7 @@ const SERVICE_CATALOG = {
     description: "Connect to Amazon S3 buckets",
     connectionType: "aws",
     fields: [
-      { key: "region", label: "AWS Region", type: "text", required: true, default: "ap-south-1" },
+      awsRegionField("ap-south-1"),
       { key: "authMode", label: "Auth Mode", type: "select", required: true, options: ["credentials-file", "static-keys"], default: "credentials-file" },
       { key: "profile", label: "AWS Profile (for credentials file)", type: "text", required: false, default: "default" },
       { key: "refreshIntervalMins", label: "Credential refresh interval (minutes)", type: "number", required: false, default: 55 },
@@ -107,7 +124,7 @@ const SERVICE_CATALOG = {
     description: "Connect to Amazon CloudWatch Logs",
     connectionType: "aws",
     fields: [
-      { key: "region", label: "AWS Region", type: "text", required: true, default: "ap-south-1" },
+      awsRegionField("ap-south-1"),
       { key: "authMode", label: "Auth Mode", type: "select", required: true, options: ["credentials-file", "static-keys"], default: "credentials-file" },
       { key: "profile", label: "AWS Profile (for credentials file)", type: "text", required: false, default: "default" },
       { key: "refreshIntervalMins", label: "Credential refresh interval (minutes)", type: "number", required: false, default: 55 },
@@ -365,10 +382,139 @@ const SERVICE_CATALOG = {
     description: "Send, receive, and manage messages in Amazon SQS queues",
     connectionType: "aws",
     fields: [
-      { key: "region", label: "AWS Region", type: "text", required: true, default: "us-east-1" },
+      awsRegionField("us-east-1"),
       { key: "accessKeyId", label: "Access Key ID", type: "text", required: true },
       { key: "secretAccessKey", label: "Secret Access Key", type: "password", required: true },
       { key: "sessionToken", label: "Session Token (optional)", type: "password", required: false },
+    ],
+  },
+
+  // ── Compute ──
+  aws_lambda: {
+    id: "aws_lambda", name: "AWS Lambda", category: "cloud", icon: "⚡",
+    description: "List, invoke, and inspect Lambda functions",
+    connectionType: "aws",
+    fields: [
+      awsRegionField("ap-south-1"),
+      { key: "authMode", label: "Auth Mode", type: "select", required: true, options: ["credentials-file", "static-keys"], default: "credentials-file" },
+      { key: "profile", label: "AWS Profile", type: "text", required: false, default: "default" },
+      { key: "refreshIntervalMins", label: "Credential refresh (min)", type: "number", required: false, default: 55 },
+      { key: "accessKeyId", label: "Access Key ID", type: "text", required: false },
+      { key: "secretAccessKey", label: "Secret Access Key", type: "password", required: false },
+      { key: "sessionToken", label: "Session Token", type: "password", required: false },
+    ],
+  },
+  aws_ec2: {
+    id: "aws_ec2", name: "AWS EC2", category: "cloud", icon: "🖥️",
+    description: "Describe EC2 instances, security groups, VPCs, and subnets",
+    connectionType: "aws",
+    fields: [
+      awsRegionField("ap-south-1"),
+      { key: "authMode", label: "Auth Mode", type: "select", required: true, options: ["credentials-file", "static-keys"], default: "credentials-file" },
+      { key: "profile", label: "AWS Profile", type: "text", required: false, default: "default" },
+      { key: "refreshIntervalMins", label: "Credential refresh (min)", type: "number", required: false, default: 55 },
+      { key: "accessKeyId", label: "Access Key ID", type: "text", required: false },
+      { key: "secretAccessKey", label: "Secret Access Key", type: "password", required: false },
+      { key: "sessionToken", label: "Session Token", type: "password", required: false },
+    ],
+  },
+  aws_rds: {
+    id: "aws_rds", name: "AWS RDS", category: "cloud", icon: "🗄️",
+    description: "Describe RDS instances, clusters, events, and snapshots",
+    connectionType: "aws",
+    fields: [
+      awsRegionField("ap-south-1"),
+      { key: "authMode", label: "Auth Mode", type: "select", required: true, options: ["credentials-file", "static-keys"], default: "credentials-file" },
+      { key: "profile", label: "AWS Profile", type: "text", required: false, default: "default" },
+      { key: "refreshIntervalMins", label: "Credential refresh (min)", type: "number", required: false, default: 55 },
+      { key: "accessKeyId", label: "Access Key ID", type: "text", required: false },
+      { key: "secretAccessKey", label: "Secret Access Key", type: "password", required: false },
+      { key: "sessionToken", label: "Session Token", type: "password", required: false },
+    ],
+  },
+  aws_sns: {
+    id: "aws_sns", name: "AWS SNS", category: "cloud", icon: "📢",
+    description: "List topics, subscriptions, and publish messages to SNS",
+    connectionType: "aws",
+    fields: [
+      awsRegionField("ap-south-1"),
+      { key: "authMode", label: "Auth Mode", type: "select", required: true, options: ["credentials-file", "static-keys"], default: "credentials-file" },
+      { key: "profile", label: "AWS Profile", type: "text", required: false, default: "default" },
+      { key: "refreshIntervalMins", label: "Credential refresh (min)", type: "number", required: false, default: 55 },
+      { key: "accessKeyId", label: "Access Key ID", type: "text", required: false },
+      { key: "secretAccessKey", label: "Secret Access Key", type: "password", required: false },
+      { key: "sessionToken", label: "Session Token", type: "password", required: false },
+    ],
+  },
+  aws_ecs: {
+    id: "aws_ecs", name: "AWS ECS", category: "cloud", icon: "🐳",
+    description: "List and describe ECS clusters, services, and tasks",
+    connectionType: "aws",
+    fields: [
+      awsRegionField("ap-south-1"),
+      { key: "authMode", label: "Auth Mode", type: "select", required: true, options: ["credentials-file", "static-keys"], default: "credentials-file" },
+      { key: "profile", label: "AWS Profile", type: "text", required: false, default: "default" },
+      { key: "refreshIntervalMins", label: "Credential refresh (min)", type: "number", required: false, default: 55 },
+      { key: "accessKeyId", label: "Access Key ID", type: "text", required: false },
+      { key: "secretAccessKey", label: "Secret Access Key", type: "password", required: false },
+      { key: "sessionToken", label: "Session Token", type: "password", required: false },
+    ],
+  },
+  aws_route53: {
+    id: "aws_route53", name: "AWS Route53", category: "cloud", icon: "🌐",
+    description: "List hosted zones and DNS records",
+    connectionType: "aws",
+    fields: [
+      awsRegionField("us-east-1"),
+      { key: "authMode", label: "Auth Mode", type: "select", required: true, options: ["credentials-file", "static-keys"], default: "credentials-file" },
+      { key: "profile", label: "AWS Profile", type: "text", required: false, default: "default" },
+      { key: "refreshIntervalMins", label: "Credential refresh (min)", type: "number", required: false, default: 55 },
+      { key: "accessKeyId", label: "Access Key ID", type: "text", required: false },
+      { key: "secretAccessKey", label: "Secret Access Key", type: "password", required: false },
+      { key: "sessionToken", label: "Session Token", type: "password", required: false },
+    ],
+  },
+  aws_iam: {
+    id: "aws_iam", name: "AWS IAM", category: "cloud", icon: "🔑",
+    description: "List and inspect IAM users, roles, and policies (read-only)",
+    connectionType: "aws",
+    fields: [
+      { ...awsRegionField("us-east-1"), label: "AWS Region (IAM is global — region ignored)", required: false },
+      { key: "authMode", label: "Auth Mode", type: "select", required: true, options: ["credentials-file", "static-keys"], default: "credentials-file" },
+      { key: "profile", label: "AWS Profile", type: "text", required: false, default: "default" },
+      { key: "refreshIntervalMins", label: "Credential refresh (min)", type: "number", required: false, default: 55 },
+      { key: "accessKeyId", label: "Access Key ID", type: "text", required: false },
+      { key: "secretAccessKey", label: "Secret Access Key", type: "password", required: false },
+      { key: "sessionToken", label: "Session Token", type: "password", required: false },
+    ],
+  },
+  aws_eks: {
+    id: "aws_eks", name: "AWS EKS", category: "cloud", icon: "☸️",
+    description: "List and describe EKS Kubernetes clusters, node groups, and Fargate profiles",
+    connectionType: "aws",
+    fields: [
+      awsRegionField("ap-south-1"),
+      { key: "authMode", label: "Auth Mode", type: "select", required: true, options: ["credentials-file", "static-keys"], default: "credentials-file" },
+      { key: "profile", label: "AWS Profile", type: "text", required: false, default: "default" },
+      { key: "refreshIntervalMins", label: "Credential refresh (min)", type: "number", required: false, default: 55 },
+      { key: "accessKeyId", label: "Access Key ID", type: "text", required: false },
+      { key: "secretAccessKey", label: "Secret Access Key", type: "password", required: false },
+      { key: "sessionToken", label: "Session Token", type: "password", required: false },
+    ],
+  },
+
+  // ── Data Platform ──
+  databricks: {
+    id: "databricks",
+    name: "Databricks",
+    category: "data",
+    icon: "🧱",
+    description: "Query Databricks SQL warehouses, list clusters, jobs, and notebooks",
+    connectionType: "api",
+    fields: [
+      { key: "host", label: "Workspace URL", type: "text", required: true, placeholder: "https://adb-1234567890.12.azuredatabricks.net" },
+      { key: "token", label: "Personal Access Token", type: "password", required: true },
+      { key: "warehouseId", label: "SQL Warehouse ID (for queries)", type: "text", required: false, placeholder: "abc123def456" },
     ],
   },
 
@@ -437,13 +583,14 @@ export function getActiveConnections() {
   return Object.values(conns).filter(c => c.status === "connected");
 }
 
-export function saveConnection(connectionId, serviceId, config, name) {
+export function saveConnection(connectionId, serviceId, config, name, mode) {
   const conns = loadConnections();
   conns[connectionId] = {
     id: connectionId,
     serviceId,
     name: name || `${SERVICE_CATALOG[serviceId]?.name || serviceId} connection`,
     config,
+    mode: mode || conns[connectionId]?.mode || "readwrite", // "readonly" or "readwrite"
     status: "configured", // configured | connected | error
     createdAt: conns[connectionId]?.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),

@@ -66,7 +66,35 @@ import {
   deleteCustomPrompt,
 } from "../core/prompt-registry.js";
 import { getDefaultAgents, getDefaultAgent } from "../core/default-agents.js";
+import { checkSkillGap, getDefaultAgentsByRole } from "../core/default-agents.js";
 import { handleAgentMcp, listAgentMcpEndpoints } from "../mcp/agent-mcp.js";
+import { forceRefresh as forceAwsRefresh } from "../core/aws-credentials.js";
+import {
+  getStats as getGovernanceStats,
+  queryAuditLogs,
+  exportAuditCSV,
+  cleanupLogs,
+  getPolicies,
+  addPolicy,
+  updatePolicy,
+  deletePolicy as deleteGovernancePolicy,
+  resetPolicies,
+  getBucketStats,
+  setEnabled as setGovernanceEnabled,
+  isEnabled as isGovernanceEnabled,
+  getAlertConfig,
+  updateAlertConfig,
+  updateAlertRule,
+  getRecentAlerts,
+  clearRecentAlerts,
+  getApprovals,
+  approveRequest,
+  rejectRequest,
+  getPendingCount,
+  scanPromptInjection,
+} from "../governance/index.js";
+import { generateReport, getBlockedActionsReport } from "../governance/security-report.js";
+import { logActivity, queryActivity, getActivityStats, getDangerousActions } from "../governance/system-monitor.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -125,7 +153,7 @@ app.get("/api/connections/:id", (req, res) => {
 
 // Create/update connection
 app.post("/api/connections", async (req, res) => {
-  const { serviceId, name, config } = req.body;
+  const { serviceId, name, config, mode } = req.body;
   const svc = getServiceDefinition(serviceId);
   if (!svc) return res.status(400).json({ error: "Invalid service ID" });
 
@@ -135,13 +163,13 @@ app.post("/api/connections", async (req, res) => {
   }
 
   const connId = generateConnectionId(serviceId);
-  const conn = saveConnection(connId, serviceId, config, name);
+  const conn = saveConnection(connId, serviceId, config, name, mode);
   res.json(conn);
 });
 
 // Update existing connection
 app.put("/api/connections/:id", async (req, res) => {
-  const { name, config } = req.body;
+  const { name, config, mode } = req.body;
   const existing = getConnection(req.params.id);
   if (!existing) return res.status(404).json({ error: "Connection not found" });
 
@@ -161,7 +189,7 @@ app.put("/api/connections/:id", async (req, res) => {
 
   // Unload old adapter, save, reload
   try { await unloadAdapter(req.params.id); } catch (_) {}
-  const conn = saveConnection(req.params.id, existing.serviceId, mergedConfig, name || existing.name);
+  const conn = saveConnection(req.params.id, existing.serviceId, mergedConfig, name || existing.name, mode);
   try { await loadAdapter(req.params.id); } catch (_) {}
   res.json(conn);
 });
@@ -171,6 +199,37 @@ app.post("/api/connections/:id/test", async (req, res) => {
   try {
     const result = await testConnection(req.params.id);
     res.json(result);
+  } catch (e) {
+    res.json({ ok: false, message: e.message });
+  }
+});
+
+// Refresh AWS credentials for a connection (and all connections sharing the same profile)
+app.post("/api/connections/:id/refresh", async (req, res) => {
+  try {
+    const conn = getConnection(req.params.id);
+    if (!conn) return res.status(404).json({ ok: false, message: "Connection not found" });
+    const sid = conn.serviceId || "";
+    if (!sid.startsWith("aws_") && !["cloudwatch","s3","dynamodb","sqs","lambda","ec2","rds","sns","ecs","route53","iam","eks"].includes(sid)) {
+      return res.status(400).json({ ok: false, message: "Not an AWS connection" });
+    }
+    const profile = conn.config?.profile || "default";
+    forceAwsRefresh(profile);
+
+    // Reload ALL AWS connections sharing this profile so all SDK clients get fresh creds
+    const allConns = Object.values(getAllConnections());
+    const awsConns = allConns.filter(c => {
+      const s = c.serviceId || "";
+      const isAws = s.startsWith("aws_") || ["cloudwatch","s3","dynamodb","sqs","lambda","ec2","rds","sns","ecs","route53","iam","eks"].includes(s);
+      return isAws && (c.config?.profile || "default") === profile;
+    });
+    let reloaded = 0;
+    for (const c of awsConns) {
+      try { await unloadAdapter(c.id); } catch (_) {}
+      try { await loadAdapter(c.id); reloaded++; } catch (_) {}
+    }
+
+    res.json({ ok: true, message: `AWS credentials refreshed for profile [${profile}] — ${reloaded} connection(s) reloaded` });
   } catch (e) {
     res.json({ ok: false, message: e.message });
   }
@@ -466,6 +525,20 @@ app.post("/api/builder/templates/:id/install", (req, res) => {
   res.status(201).json(result.agent);
 });
 
+// Filter templates by role (engineer, devops, pm, manager, sre, dba, data, security, lead)
+app.get("/api/builder/templates/role/:role", (req, res) => {
+  res.json(getDefaultAgentsByRole(req.params.role));
+});
+
+// Skill gap check — what connections does this agent need that you don't have?
+app.get("/api/builder/templates/:id/skill-gap", (req, res) => {
+  const connections = getAllConnections();
+  const activeConns = Object.values(connections).filter(c => c.status === "connected" || c.status === "configured");
+  const result = checkSkillGap(req.params.id, activeConns);
+  if (!result) return res.status(404).json({ error: "Template not found" });
+  res.json(result);
+});
+
 // ─── Per-Agent MCP Endpoints ─────────────────────────────────────────────────
 
 // List all agent MCP endpoints
@@ -529,6 +602,147 @@ app.get("/mcp/agents/:agentId/config", (req, res) => {
       }
     }
   });
+});
+
+// ─── Governance API ──────────────────────────────────────────────────────────
+
+app.get("/api/governance/stats", (req, res) => {
+  res.json({ enabled: isGovernanceEnabled(), stats: getGovernanceStats(), rateLimits: getBucketStats() });
+});
+
+app.post("/api/governance/toggle", (req, res) => {
+  setGovernanceEnabled(!!req.body.enabled);
+  res.json({ enabled: isGovernanceEnabled() });
+});
+
+app.get("/api/governance/logs", (req, res) => {
+  const { startDate, endDate, toolName, agentId, connectionId, blocked, search, limit, offset } = req.query;
+  const logs = queryAuditLogs({ startDate, endDate, toolName, agentId, connectionId, blocked: blocked === "true" ? true : undefined, search, limit: Number(limit) || 100, offset: Number(offset) || 0 });
+  res.json(logs);
+});
+
+app.get("/api/governance/logs/export", (req, res) => {
+  const { startDate, endDate } = req.query;
+  const csv = exportAuditCSV({ startDate, endDate });
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", "attachment; filename=audit-log.csv");
+  res.send(csv);
+});
+
+app.post("/api/governance/logs/cleanup", (req, res) => {
+  const removed = cleanupLogs(Number(req.body.retentionDays) || 90);
+  res.json({ removed });
+});
+
+app.get("/api/governance/policies", (req, res) => {
+  res.json(getPolicies());
+});
+
+app.post("/api/governance/policies", (req, res) => {
+  res.json(addPolicy(req.body));
+});
+
+app.put("/api/governance/policies/:id", (req, res) => {
+  const result = updatePolicy(req.params.id, req.body);
+  result ? res.json(result) : res.status(404).json({ error: "Policy not found" });
+});
+
+app.delete("/api/governance/policies/:id", (req, res) => {
+  deleteGovernancePolicy(req.params.id) ? res.json({ ok: true }) : res.status(404).json({ error: "Policy not found" });
+});
+
+app.post("/api/governance/policies/reset", (req, res) => {
+  res.json(resetPolicies());
+});
+
+// Alerts
+app.get("/api/governance/alerts/config", (req, res) => {
+  res.json(getAlertConfig());
+});
+
+app.put("/api/governance/alerts/config", (req, res) => {
+  res.json(updateAlertConfig(req.body));
+});
+
+app.put("/api/governance/alerts/rules/:event", (req, res) => {
+  const result = updateAlertRule(req.params.event, req.body);
+  result ? res.json(result) : res.status(404).json({ error: "Rule not found" });
+});
+
+app.get("/api/governance/alerts/recent", (req, res) => {
+  res.json(getRecentAlerts(Number(req.query.limit) || 50));
+});
+
+app.post("/api/governance/alerts/clear", (req, res) => {
+  clearRecentAlerts();
+  res.json({ ok: true });
+});
+
+// Approvals
+app.get("/api/governance/approvals", (req, res) => {
+  res.json(getApprovals({ status: req.query.status, limit: Number(req.query.limit) || 50 }));
+});
+
+app.get("/api/governance/approvals/pending-count", (req, res) => {
+  res.json({ count: getPendingCount() });
+});
+
+app.post("/api/governance/approvals/:id/approve", (req, res) => {
+  const result = approveRequest(req.params.id, req.body);
+  result ? res.json(result) : res.status(404).json({ error: "Not found" });
+});
+
+app.post("/api/governance/approvals/:id/reject", (req, res) => {
+  const result = rejectRequest(req.params.id, req.body);
+  result ? res.json(result) : res.status(404).json({ error: "Not found" });
+});
+
+// Prompt Guard test
+app.post("/api/governance/prompt-guard/test", (req, res) => {
+  const text = req.body.text || req.body.sql || (typeof req.body === "string" ? req.body : JSON.stringify(req.body));
+  res.json(scanPromptInjection(text));
+});
+
+// Security Reports
+app.get("/api/governance/report", (req, res) => {
+  const { startDate, endDate, format } = req.query;
+  const report = generateReport({ startDate, endDate, format: format || "json" });
+  if (format === "markdown") {
+    res.setHeader("Content-Type", "text/markdown");
+    res.send(report);
+  } else {
+    res.json(report);
+  }
+});
+
+app.get("/api/governance/report/download", (req, res) => {
+  const { startDate, endDate } = req.query;
+  const md = generateReport({ startDate, endDate, format: "markdown" });
+  res.setHeader("Content-Type", "text/markdown");
+  res.setHeader("Content-Disposition", "attachment; filename=snayu-security-report.md");
+  res.send(md);
+});
+
+app.get("/api/governance/blocked", (req, res) => {
+  res.json(getBlockedActionsReport(req.query));
+});
+
+// System Activity Monitor
+app.get("/api/governance/activity", (req, res) => {
+  res.json(queryActivity(req.query));
+});
+
+app.get("/api/governance/activity/stats", (req, res) => {
+  res.json(getActivityStats());
+});
+
+app.get("/api/governance/activity/dangerous", (req, res) => {
+  res.json(getDangerousActions(Number(req.query.limit) || 50));
+});
+
+app.post("/api/governance/activity/log", (req, res) => {
+  const entry = logActivity(req.body);
+  res.json(entry);
 });
 
 // ─── Serve UI (catch-all — must be LAST) ─────────────────────────────────────
