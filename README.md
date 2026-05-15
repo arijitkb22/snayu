@@ -208,18 +208,18 @@ Every agent starts with **Phase 0** — it asks targeted questions before doing 
 
 ---
 
-## Supported Services (25+)
+## Supported Services (34+)
 
 | Category | Services |
 |----------|----------|
-| 🗄️ **Databases** | PostgreSQL, MySQL, MongoDB, DynamoDB |
-| ☁️ **Cloud** | Amazon S3, CloudWatch, SQS |
+| 🗄️ **Databases** | PostgreSQL, MySQL, MongoDB, DynamoDB, Snowflake, Redis |
+| ☁️ **AWS** | S3, CloudWatch, SQS, SNS, Lambda, EC2, ECS, EKS, RDS, IAM, Route53, DynamoDB |
 | 🔍 **Search** | Elasticsearch / OpenSearch |
 | ⚙️ **DevOps** | GitHub, GitLab, Jira, Confluence |
 | 💬 **Communication** | Slack, Microsoft Teams, SendGrid |
 | 📈 **Monitoring** | Datadog, PagerDuty, Splunk |
-| 🤖 **AI** | OpenAI |
-| 🔧 **Custom** | Any REST API, Any Webhook, Snowflake, Redis, Notion, Kubernetes |
+| 🤖 **AI** | OpenAI, Databricks |
+| 🔧 **Custom** | Any REST API, Any Webhook, Notion, Kubernetes |
 
 ---
 
@@ -308,26 +308,44 @@ connector/
 │   │   ├── adapter-manager.js    # Adapter lifecycle management
 │   │   ├── wiki.js               # Global LLM Wiki (persistent memory)
 │   │   └── repo-wiki.js          # Per-repo knowledge wikis
-│   ├── adapters/                 # 25 service adapters
+│   ├── adapters/                 # 35 service adapters
+│   ├── governance/               # 🛡️ Governance engine
+│   │   ├── index.js              # 9-step pipeline middleware
+│   │   ├── audit-log.js          # Crash-safe JSONL audit trail + token/cost tracking
+│   │   ├── policy-engine.js      # Allow/deny rules by tool/agent/connection
+│   │   ├── rate-limiter.js       # Token-bucket rate limits
+│   │   ├── prompt-guard.js       # Injection & jailbreak detection
+│   │   ├── guardrails.js         # Secrets & PII scanning
+│   │   ├── approvals.js          # Human-in-the-loop approval queue
+│   │   ├── alerts.js             # Real-time violation alerts
+│   │   ├── security-report.js    # Compliance report generator
+│   │   ├── system-monitor.js     # AI system action tracker
+│   │   └── patterns.js           # Regex patterns for detection
 │   ├── mcp/
 │   │   └── server.js             # MCP server + snayu dispatcher + wiki tools
 │   └── web/
 │       └── server.js             # Express dashboard + API
 ├── data/
 │   ├── connections.json          # Persisted connections
-│   └── built-agents.json         # Installed agents with systemPrompts
+│   ├── built-agents.json         # Installed agents with systemPrompts
+│   └── governance/
+│       ├── stats.json            # Cumulative stats (calls, tokens, cost)
+│       ├── alerts.json           # Recent governance alerts
+│       ├── policies.json         # Policy rules
+│       └── audit/
+│           └── audit-YYYY-MM-DD.jsonl  # Daily append-only audit logs
 ├── wiki/                         # LLM Wiki — persistent agent memory
-│   ├── _index.md                 # Wiki table of contents
-│   ├── architecture.md           # Tech stack, patterns, structure
-│   ├── context.md                # Current state, handoff notes
-│   ├── changelog.md              # Recent changes
+│   ├── _index.md
+│   ├── architecture.md
+│   ├── context.md
+│   ├── changelog.md
 │   └── repos/                    # Per-repo knowledge wikis
-│       ├── _index.md             # Master repo index
-│       └── <owner>__<repo>/      # One wiki per GitHub repo
-│           ├── code-structure.md
-│           ├── pr-reviews.md
-│           ├── risk-map.md
-│           └── standards.md
+├── docs/                         # Architecture & strategy docs
+│   ├── GOVERNANCE_ARCHITECTURE.md
+│   ├── GOVERNANCE_STRATEGY.md
+│   ├── MARKET_ANALYSIS.md
+│   └── GREENFIELD_OPPORTUNITIES.md
+├── Dockerfile
 ├── .github/
 │   ├── copilot-instructions.md   # Auto-injected into Copilot conversations
 │   └── copilot/snayu.prompt.md   # #snayu prompt shortcut
@@ -346,6 +364,171 @@ connector/
 
 ---
 
+## 🛡️ Governance Engine
+
+Snayu includes a production-grade **governance layer** that wraps every tool call with a full security and observability pipeline — before and after execution.
+
+### The Pipeline
+
+Every tool call flows through this chain:
+
+```
+Tool Call
+   │
+   ▼
+[1] Policy Check      → Is this tool allowed for this agent/connection?
+   │
+   ▼
+[2] Prompt Guard      → Scan input for injection attempts & jailbreaks
+   │
+   ▼
+[3] Input Guard       → Scan args for secrets, PII, API keys
+   │
+   ▼
+[4] Rate Limiter      → Enforce per-tool / per-connection call budgets
+   │
+   ▼
+[5] Approval Gate     → Require human approval for destructive actions
+   │
+   ▼
+[6] Execute           → Run the actual tool
+   │
+   ▼
+[7] Output Guard      → Scan output for leaked secrets / sensitive data
+   │
+   ▼
+[8] Alert Engine      → Fire alerts on policy violations or anomalies
+   │
+   ▼
+[9] Audit Log         → Persist enriched entry to append-only JSONL
+```
+
+### Governance Modules
+
+| Module | File | What It Does |
+|--------|------|-------------|
+| **Middleware** | `governance/index.js` | Orchestrates the full 9-step pipeline |
+| **Audit Log** | `governance/audit-log.js` | Crash-safe append-only JSONL + stats |
+| **Policy Engine** | `governance/policy-engine.js` | Allow/deny rules by tool, agent, connection |
+| **Rate Limiter** | `governance/rate-limiter.js` | Token-bucket rate limits per tool/connection |
+| **Prompt Guard** | `governance/prompt-guard.js` | Detects injection, jailbreak, manipulation |
+| **Guardrails** | `governance/guardrails.js` | Scans for secrets, PII, API keys in I/O |
+| **Approvals** | `governance/approvals.js` | Human-in-the-loop approval queue |
+| **Alerts** | `governance/alerts.js` | Real-time alerts on violations & anomalies |
+| **Security Report** | `governance/security-report.js` | Full security & compliance report generator |
+| **System Monitor** | `governance/system-monitor.js` | Tracks all AI system actions independently |
+| **Patterns** | `governance/patterns.js` | Regex patterns for secrets/PII detection |
+
+### Audit Log — Every Tool Call, Fully Documented
+
+Each audit entry is a rich JSON record stored in **daily-rotated JSONL files** at `data/governance/audit/audit-YYYY-MM-DD.jsonl`.
+
+**Example entry:**
+```json
+{
+  "id": "evt_3a9f12bc44e71a08",
+  "timestamp": "2026-05-14T09:18:30.638Z",
+  "toolName": "postgresql_mnz1wzbl__query",
+  "action": "query",
+  "service": "postgresql",
+  "connectionName": "local postgres",
+  "connectionId": "postgresql_mnz1wzbl",
+  "callerClient": "Visual Studio Code",
+  "callerVersion": "1.105.1",
+  "inputSummary": "sql: SELECT current_database(), current_user, now() as server_time | limit: 100",
+  "outputSummary": "329 chars",
+  "durationMs": 12,
+  "allowed": true,
+  "blocked": false,
+  "model": "claude-sonnet-4",
+  "inputTokens": 87,
+  "outputTokens": 17,
+  "totalTokens": 104,
+  "estimatedCost": 0.001059
+}
+```
+
+**Every entry captures:**
+
+| Field | Description |
+|-------|-------------|
+| `toolName` | Exact MCP tool called |
+| `action` | Semantic action (query, search, scan, send…) |
+| `service` | Service type (postgresql, cloudwatch, s3…) |
+| `connectionName` | Human-readable connection name |
+| `callerClient` | IDE that made the call (VS Code, Cursor…) |
+| `callerVersion` | Exact IDE version |
+| `inputSummary` | What was asked — no raw payloads, just intent |
+| `outputSummary` | What was returned — row counts, char length |
+| `durationMs` | Execution time |
+| `allowed / blocked` | Policy decision |
+| `model` | LLM model used for the session |
+| `inputTokens / outputTokens / totalTokens` | Estimated token usage |
+| `estimatedCost` | USD cost estimate for this call |
+
+### Crash-Safe Writes
+
+Audit writes use **`appendFileSync`** — the entry is fully on disk before execution returns. If the server crashes mid-session, no audit entries are lost.
+
+On restart, stats are automatically **rebuilt from the JSONL files** — no stale in-memory counters.
+
+### Token & Cost Tracking
+
+Snayu estimates tokens and USD cost for every tool call using a **12-model pricing table**:
+
+| Model | Input ($/1M tokens) | Output ($/1M tokens) |
+|-------|--------------------|--------------------|
+| `gpt-4o` | $2.50 | $10.00 |
+| `gpt-4o-mini` | $0.15 | $0.60 |
+| `claude-sonnet-4` | $3.00 | $15.00 |
+| `claude-3.5-sonnet` | $3.00 | $15.00 |
+| `claude-3-opus` | $15.00 | $75.00 |
+| `claude-3-haiku` | $0.25 | $1.25 |
+| *(+ 6 more)* | … | … |
+
+Token estimation uses the `chars / 4` heuristic (±20% accuracy for English text). Costs accumulate in `data/governance/stats.json` and are visible in the dashboard.
+
+### Governance Dashboard
+
+The **Governance** tab in the dashboard (`http://localhost:3456`) shows:
+
+- **Total Calls / Blocked / Errors / Redacted** — lifetime counters
+- **Total Tokens (est.)** — cumulative token usage across all sessions
+- **Est. Cost (USD)** — cumulative cost estimate
+- **Audit Log Table** — every call with Time, Service, Action, Duration, Status
+- **Detail Modal** — click any row to see full entry including token breakdown, input/output summary, caller info
+- **CSV Export** — download the full audit log with all enriched fields
+
+### Governance Tools (MCP)
+
+These tools are available directly in your IDE via MCP:
+
+| Tool | Description |
+|------|-------------|
+| `governance__generate_security_report` | Full security & compliance report with risk score |
+| `governance__get_blocked_actions` | All denied tool calls with reasons |
+| `governance__get_dangerous_actions` | Detected dangerous commands (rm -rf, sudo, force push…) |
+| `governance__get_governance_stats` | Real-time stats — calls, blocked, cost, tokens |
+| `governance__get_pending_approvals` | Tool calls awaiting human review |
+| `governance__get_recent_alerts` | Recent policy violations and findings |
+| `governance__get_system_activity` | Full AI action monitor (terminal, file writes, git ops) |
+| `governance__query_audit_logs` | Query audit trail with filters |
+| `governance__scan_for_prompt_injection` | Scan any text for injection/jailbreak attempts |
+| `governance__scan_text_for_secrets` | Scan text for API keys, PII, credentials |
+
+### Toggle Governance
+
+```bash
+# Via API
+curl -X POST http://localhost:3456/api/governance/toggle \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": true}'
+```
+
+Or toggle the switch on the Governance dashboard tab.
+
+---
+
 ## Security
 
 - Credentials stored locally in `data/connections.json`
@@ -353,6 +536,8 @@ connector/
 - Database queries are read-only (SELECT only)
 - All data stays on your machine
 - AWS credentials auto-refresh from `~/.aws/credentials`
+- All AI tool calls logged to tamper-evident append-only JSONL audit trail
+- Input/output scanned for secrets, PII, and prompt injection on every call
 
 ---
 
