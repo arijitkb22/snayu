@@ -717,6 +717,9 @@
         <div id="log-files-list" style="display:grid;gap:6px;font-size:12px;"></div>
       </div>
 
+      <!-- Cost Budgets (enterprise feature — graceful fallback if not installed) -->
+      <div id="budgets-section"></div>
+
       <!-- Audit Log -->
       <div class="card" style="margin-bottom:20px;">
         <div class="card-header"><h2>Recent Audit Log</h2></div>
@@ -2162,6 +2165,7 @@
     loadRecentAlerts();
     loadSystemActivity();
     loadLogFiles();
+    loadBudgets();
   }
 
   async function toggleGovernance(enabled) {
@@ -2264,6 +2268,122 @@
     if (start) params.set('startDate', start + 'T00:00:00.000Z');
     if (end) params.set('endDate', end + 'T23:59:59.999Z');
     window.open(`/api/governance/logs/export?${params}`, '_blank');
+  }
+
+  // ─── Budget UI ────────────────────────────────────────────────────────────
+  async function loadBudgets() {
+    const el = document.getElementById('budgets-section');
+    if (!el) return;
+    const data = await api('/enterprise/budgets').catch(() => null);
+    if (!data?.available) {
+      el.innerHTML = `
+        <div style="background:var(--surface);border-radius:12px;padding:20px;margin-top:20px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <span style="font-size:20px;">💰</span>
+            <span style="font-weight:700;font-size:15px;">Cost Budgets</span>
+            <span style="font-size:10px;padding:2px 8px;background:#6366f122;color:#6366f1;border-radius:4px;font-weight:600;">ENTERPRISE</span>
+          </div>
+          <div style="color:var(--text-tertiary);font-size:13px;">Install <code style="background:var(--bg-alt);padding:2px 6px;border-radius:4px;">@snayu/enterprise</code> to set per-connection daily/weekly spend limits.</div>
+        </div>`;
+      return;
+    }
+    const { budgets } = data;
+    el.innerHTML = `
+      <div style="background:var(--surface);border-radius:12px;padding:20px;margin-top:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:20px;">💰</span>
+            <span style="font-weight:700;font-size:15px;">Cost Budgets</span>
+            <span style="font-size:10px;padding:2px 8px;background:#22c55e22;color:#22c55e;border-radius:4px;font-weight:600;">ACTIVE</span>
+          </div>
+          <button class="btn btn-sm" onclick="showAddBudgetForm()">+ Add Budget</button>
+        </div>
+        <div id="budget-list">
+          ${budgets.length === 0 ? '<div style="color:var(--text-tertiary);font-size:13px;padding:8px 0;">No budgets configured. Default: $10/day, $50/week (alert only).</div>' :
+            budgets.map(b => {
+              const dailyPct = Math.min(100, b.dailyPct || 0);
+              const weeklyPct = Math.min(100, b.weeklyPct || 0);
+              const dailyColor = dailyPct > 90 ? '#ef4444' : dailyPct > 70 ? '#f59e0b' : '#22c55e';
+              const weeklyColor = weeklyPct > 90 ? '#ef4444' : weeklyPct > 70 ? '#f59e0b' : '#22c55e';
+              const blocked = b.blocked;
+              return `
+                <div style="background:var(--bg);border-radius:10px;padding:14px;margin-bottom:10px;border:1px solid ${blocked ? '#ef444433' : 'transparent'};">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <div style="font-weight:600;font-size:13px;">${b.connId === '__default__' ? '🌐 Default (all connections)' : '🔌 ' + b.connId}</div>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                      ${blocked ? '<span style="font-size:10px;padding:2px 8px;background:#ef444422;color:#ef4444;border-radius:4px;font-weight:600;">🚫 BLOCKED</span>' : ''}
+                      <span style="font-size:11px;padding:2px 8px;background:var(--surface);border-radius:4px;color:var(--text-tertiary);">${b.onExceed === 'block' ? '🚫 block' : '🔔 alert'}</span>
+                      <button class="btn btn-sm" style="color:#ef4444;" onclick="deleteBudget('${b.connId}')">✕</button>
+                    </div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div>
+                      <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;">Daily: $${(b.dailySpend||0).toFixed(4)} / $${b.dailyBudget === 1e308 ? '∞' : b.dailyBudget}</div>
+                      <div style="background:var(--surface);border-radius:4px;height:6px;overflow:hidden;">
+                        <div style="height:100%;width:${dailyPct}%;background:${dailyColor};border-radius:4px;transition:width .3s;"></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;">Weekly: $${(b.weeklySpend||0).toFixed(4)} / $${b.weeklyBudget === 1e308 ? '∞' : b.weeklyBudget}</div>
+                      <div style="background:var(--surface);border-radius:4px;height:6px;overflow:hidden;">
+                        <div style="height:100%;width:${weeklyPct}%;background:${weeklyColor};border-radius:4px;transition:width .3s;"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>`;
+            }).join('')}
+        </div>
+        <div id="add-budget-form" style="display:none;background:var(--bg);border-radius:10px;padding:14px;margin-top:10px;">
+          <div style="font-weight:600;margin-bottom:12px;">New Budget</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div>
+              <label style="font-size:11px;color:var(--text-tertiary);">Connection ID</label>
+              <input id="budget-connid" placeholder="e.g. openai_prod or __default__" style="width:100%;margin-top:4px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-tertiary);">Daily Limit (USD)</label>
+              <input id="budget-daily" type="number" step="0.01" placeholder="10.00" style="width:100%;margin-top:4px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-tertiary);">Weekly Limit (USD)</label>
+              <input id="budget-weekly" type="number" step="0.01" placeholder="50.00" style="width:100%;margin-top:4px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;">
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <label style="font-size:12px;">On Exceed:</label>
+            <select id="budget-exceed" style="padding:5px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;">
+              <option value="alert">🔔 Alert only</option>
+              <option value="block">🚫 Block calls</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="saveBudget()" style="margin-left:auto;">Save</button>
+            <button class="btn btn-sm" onclick="document.getElementById('add-budget-form').style.display='none'">Cancel</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function showAddBudgetForm() {
+    const f = document.getElementById('add-budget-form');
+    if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  }
+
+  async function saveBudget() {
+    const connId = document.getElementById('budget-connid').value.trim();
+    const dailyUsd = parseFloat(document.getElementById('budget-daily').value) || null;
+    const weeklyUsd = parseFloat(document.getElementById('budget-weekly').value) || null;
+    const onExceed = document.getElementById('budget-exceed').value;
+    if (!connId) { alert('Connection ID is required'); return; }
+    await api('/enterprise/budgets', {
+      method: 'POST',
+      body: JSON.stringify({ connId, dailyUsd, weeklyUsd, onExceed }),
+    });
+    await loadBudgets();
+  }
+
+  async function deleteBudget(connId) {
+    if (!confirm(`Remove budget for "${connId}"?`)) return;
+    await api(`/enterprise/budgets/${encodeURIComponent(connId)}`, { method: 'DELETE' });
+    await loadBudgets();
   }
 
   function showAuditDetail(idx) {

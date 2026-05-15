@@ -9,7 +9,7 @@ import { checkRate } from "./rate-limiter.js";
 import { scanArgs as scanPromptInjection, scanOutput as scanOutputLeak } from "./prompt-guard.js";
 import { fireAlert } from "./alerts.js";
 import { queueApproval } from "./approvals.js";
-import { callHook } from "../core/plugin-registry.js";
+import { callHook, callHookWithVeto } from "../core/plugin-registry.js";
 
 let enabled = true;
 
@@ -245,7 +245,18 @@ export function governedExecute(executeFn) {
         return { error: entry.blockReason, retryAfterMs: rate.retryAfterMs };
       }
 
-      // 5. Execute the actual tool
+      // 5a. Plugin beforeExecute veto — enterprise plugins can block here (e.g. budget exceeded)
+      const veto = await callHookWithVeto("beforeExecute", toolName, args, { connectionId, agentId, ...meta });
+      if (veto.block) {
+        entry.blocked = true;
+        entry.blockReason = veto.reason;
+        entry.durationMs = Date.now() - start;
+        auditAndNotify(entry);
+        fireAlert("policy_block", { toolName, reason: veto.reason, agentId, connectionId });
+        return { error: `Blocked: ${veto.reason}` };
+      }
+
+      // 5b. Execute the actual tool
       const result = await executeFn(toolName, args, connectionId);
 
       // 6. Output guardrails — scan result for secrets + prompt leaks
@@ -314,4 +325,4 @@ export { PATTERNS } from "./patterns.js";
 export { scanInput as scanPromptInjection, scanOutput as scanOutputLeak, INJECTION_PATTERNS } from "./prompt-guard.js";
 export { fireAlert, getAlertConfig, updateAlertConfig, updateAlertRule, getRecentAlerts, clearRecentAlerts } from "./alerts.js";
 export { queueApproval, approveRequest, rejectRequest, getApprovals, getPendingCount } from "./approvals.js";
-export { registerPlugin, unregisterPlugin, listPlugins } from "../core/plugin-registry.js";
+export { registerPlugin, unregisterPlugin, listPlugins, callHook, callHookWithVeto } from "../core/plugin-registry.js";

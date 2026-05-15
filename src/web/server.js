@@ -98,6 +98,28 @@ import {
 import { generateReport, getBlockedActionsReport } from "../governance/security-report.js";
 import { logActivity, queryActivity, getActivityStats, getDangerousActions } from "../governance/system-monitor.js";
 
+// ─── Enterprise plugin bridge (graceful — works without @snayu/enterprise) ───
+let enterpriseBudgets = null;
+let enterpriseCompliance = null;
+
+async function loadEnterprisePlugins() {
+  try {
+    const budgetsModule = await import("@snayu/enterprise/src/plugins/cost-budgets.js");
+    enterpriseBudgets = budgetsModule;
+    console.log("[snayu] ✅ Enterprise cost-budgets plugin loaded");
+  } catch {
+    // enterprise not installed — that's fine
+  }
+  try {
+    const complianceModule = await import("@snayu/enterprise/src/plugins/compliance-report.js");
+    enterpriseCompliance = complianceModule;
+    console.log("[snayu] ✅ Enterprise compliance-report plugin loaded");
+  } catch {
+    // enterprise not installed — that's fine
+  }
+}
+loadEnterprisePlugins();
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 
@@ -870,6 +892,65 @@ app.get("/api/governance/activity/dangerous", (req, res) => {
 app.post("/api/governance/activity/log", (req, res) => {
   const entry = logActivity(req.body);
   res.json(entry);
+});
+
+// ─── Enterprise API ───────────────────────────────────────────────────────────
+// These endpoints are available in OSS but return 501 if @snayu/enterprise is
+// not installed — so the dashboard can always call them safely.
+
+// GET /api/enterprise/budgets — list all budgets + current spend
+app.get("/api/enterprise/budgets", (req, res) => {
+  if (!enterpriseBudgets) return res.status(501).json({ error: "Enterprise plugin not installed", available: false });
+  res.json({ available: true, budgets: enterpriseBudgets.getCostBudgets() });
+});
+
+// GET /api/enterprise/budgets/:connId — status for one connection
+app.get("/api/enterprise/budgets/:connId", (req, res) => {
+  if (!enterpriseBudgets) return res.status(501).json({ error: "Enterprise plugin not installed", available: false });
+  res.json({ available: true, ...enterpriseBudgets.getBudgetStatus(req.params.connId) });
+});
+
+// POST /api/enterprise/budgets — set a budget
+// Body: { connId, dailyUsd, weeklyUsd, onExceed: "alert"|"block" }
+app.post("/api/enterprise/budgets", (req, res) => {
+  if (!enterpriseBudgets) return res.status(501).json({ error: "Enterprise plugin not installed", available: false });
+  const { connId, dailyUsd, weeklyUsd, onExceed } = req.body;
+  if (!connId) return res.status(400).json({ error: "connId is required" });
+  const result = enterpriseBudgets.setCostBudget(connId, {
+    dailyUsd: Number(dailyUsd) || Infinity,
+    weeklyUsd: Number(weeklyUsd) || Infinity,
+    onExceed: onExceed || "alert",
+  });
+  res.json({ available: true, ...result });
+});
+
+// DELETE /api/enterprise/budgets/:connId — remove a budget
+app.delete("/api/enterprise/budgets/:connId", (req, res) => {
+  if (!enterpriseBudgets) return res.status(501).json({ error: "Enterprise plugin not installed", available: false });
+  enterpriseBudgets.deleteCostBudget(req.params.connId);
+  res.json({ available: true, deleted: req.params.connId });
+});
+
+// POST /api/enterprise/compliance — generate a compliance report
+// Body: { type: "soc2"|"hipaa", startDate?, endDate?, companyName? }
+app.post("/api/enterprise/compliance", async (req, res) => {
+  if (!enterpriseCompliance) return res.status(501).json({ error: "Enterprise plugin not installed", available: false });
+  try {
+    const report = await enterpriseCompliance.generateComplianceReport(req.body);
+    res.json({ available: true, ...report });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/enterprise/status — check which enterprise features are available
+app.get("/api/enterprise/status", (req, res) => {
+  res.json({
+    budgets: !!enterpriseBudgets,
+    compliance: !!enterpriseCompliance,
+    sso: false, // SSO routes are mounted separately via mountSsoRoutes()
+    version: enterpriseBudgets ? "0.1.0" : null,
+  });
 });
 
 // ─── Serve UI (catch-all — must be LAST) ─────────────────────────────────────

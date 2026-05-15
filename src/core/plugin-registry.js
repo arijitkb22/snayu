@@ -74,6 +74,30 @@ export async function callHook(hook, ...args) {
 }
 
 /**
+ * Call a hook that can BLOCK execution by returning { block: true, reason: "..." }.
+ * First plugin that returns a block wins — subsequent plugins are not called.
+ * Used for beforeExecute to allow enterprise plugins to gate tool calls.
+ *
+ * @param {string} hook
+ * @param {...any} args
+ * @returns {Promise<{ block: boolean, reason?: string } | null>}
+ */
+export async function callHookWithVeto(hook, ...args) {
+  const matched = getPlugins(hook);
+  for (const plugin of matched) {
+    try {
+      const result = await plugin.hooks[hook](...args);
+      if (result?.block === true) {
+        return { block: true, reason: result.reason || `Blocked by plugin: ${plugin.name}` };
+      }
+    } catch (err) {
+      console.error(`[snayu] Plugin "${plugin.name}" hook "${hook}" threw:`, err.message);
+    }
+  }
+  return { block: false };
+}
+
+/**
  * List all registered plugins (for dashboard / diagnostics).
  * @returns {Array<{ name: string, version: string, hooks: string[] }>}
  */
