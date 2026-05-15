@@ -10,6 +10,7 @@
 
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import {
   getCatalog,
@@ -678,11 +679,59 @@ app.get("/api/governance/logs", (req, res) => {
 });
 
 app.get("/api/governance/logs/export", (req, res) => {
-  const { startDate, endDate } = req.query;
-  const csv = exportAuditCSV({ startDate, endDate });
-  res.setHeader("Content-Type", "text/csv");
-  res.setHeader("Content-Disposition", "attachment; filename=audit-log.csv");
-  res.send(csv);
+  const { startDate, endDate, format = "csv" } = req.query;
+  if (format === "jsonl") {
+    const { entries } = queryAuditLogs({ startDate, endDate, limit: 50000 });
+    const label = startDate ? startDate.slice(0,10) : "all";
+    res.setHeader("Content-Type", "application/x-ndjson");
+    res.setHeader("Content-Disposition", `attachment; filename=audit-${label}.jsonl`);
+    res.send(entries.map(e => JSON.stringify(e)).join("\n") + "\n");
+  } else {
+    const csv = exportAuditCSV({ startDate, endDate });
+    const label = startDate ? startDate.slice(0,10) : "all";
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename=audit-${label}.csv`);
+    res.send(csv);
+  }
+});
+
+// Download a raw daily log file directly
+app.get("/api/governance/logs/export/day/:date", (req, res) => {
+  const { date } = req.params; // YYYY-MM-DD
+  const { format = "csv" } = req.query;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: "Invalid date format" });
+  const startDate = `${date}T00:00:00.000Z`;
+  const endDate   = `${date}T23:59:59.999Z`;
+  if (format === "jsonl") {
+    const { entries } = queryAuditLogs({ startDate, endDate, limit: 50000 });
+    res.setHeader("Content-Type", "application/x-ndjson");
+    res.setHeader("Content-Disposition", `attachment; filename=audit-${date}.jsonl`);
+    res.send(entries.map(e => JSON.stringify(e)).join("\n") + "\n");
+  } else {
+    const csv = exportAuditCSV({ startDate, endDate });
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename=audit-${date}.csv`);
+    res.send(csv);
+  }
+});
+
+// List available log files
+app.get("/api/governance/logs/files", (req, res) => {
+  const auditDir = path.join(__dirname, "../../data/governance/audit");
+  try {
+    const files = fs.readdirSync(auditDir)
+      .filter(f => f.startsWith("audit-") && f.endsWith(".jsonl"))
+      .sort().reverse()
+      .map(f => {
+        const date = f.replace("audit-", "").replace(".jsonl", "");
+        const size = fs.statSync(path.join(auditDir, f)).size;
+        const lineCount = fs.readFileSync(path.join(auditDir, f), "utf-8").trim().split("\n").filter(Boolean).length;
+        return { date, filename: f, size, entries: lineCount };
+      });
+    res.json({ files });
+  } catch (e) {
+    res.json({ files: [] });
+  }
 });
 
 app.post("/api/governance/logs/cleanup", (req, res) => {

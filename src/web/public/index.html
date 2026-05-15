@@ -697,6 +697,22 @@
         <div id="gov-activity" style="font-size:12px;max-height:400px;overflow-y:auto;"></div>
       </div>
 
+      <!-- Log Files & Download -->
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+          <h2>📦 Log Files</h2>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-size:11px;color:var(--text-tertiary);">Custom range:</span>
+            <input type="date" id="dl-start" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:11px;">
+            <span style="font-size:11px;color:var(--text-tertiary);">→</span>
+            <input type="date" id="dl-end" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:11px;">
+            <button class="btn btn-sm" onclick="downloadRangeCSV()">⬇ CSV</button>
+            <button class="btn btn-sm" onclick="downloadRangeJSONL()">⬇ JSONL</button>
+          </div>
+        </div>
+        <div id="log-files-list" style="display:grid;gap:6px;font-size:12px;"></div>
+      </div>
+
       <!-- Audit Log -->
       <div class="card" style="margin-bottom:20px;">
         <div class="card-header"><h2>Recent Audit Log</h2></div>
@@ -2139,6 +2155,7 @@
     loadApprovals();
     loadRecentAlerts();
     loadSystemActivity();
+    loadLogFiles();
   }
 
   async function toggleGovernance(enabled) {
@@ -2194,7 +2211,53 @@
   }
 
   function exportAuditCSV() {
-    window.open('/api/governance/logs/export', '_blank');
+    window.open('/api/governance/logs/export?format=csv', '_blank');
+  }
+
+  async function loadLogFiles() {
+    const data = await api('/governance/logs/files');
+    const el = document.getElementById('log-files-list');
+    if (!data?.files?.length) {
+      el.innerHTML = '<div style="color:var(--text-tertiary);padding:10px;">No log files found.</div>';
+      return;
+    }
+    el.innerHTML = data.files.map(f => {
+      const sizeKB = (f.size / 1024).toFixed(1);
+      const isToday = f.date === new Date().toISOString().slice(0,10);
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface);border-radius:8px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:18px;">📄</span>
+            <div>
+              <div style="font-weight:600;">${f.date} ${isToday ? '<span style="font-size:10px;padding:1px 6px;background:#22c55e22;color:#22c55e;border-radius:4px;margin-left:4px;">today</span>' : ''}</div>
+              <div style="color:var(--text-tertiary);font-size:11px;">${f.entries} entries · ${sizeKB} KB</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-sm" onclick="window.open('/api/governance/logs/export/day/${f.date}?format=csv','_blank')" title="Download as CSV">⬇ CSV</button>
+            <button class="btn btn-sm" onclick="window.open('/api/governance/logs/export/day/${f.date}?format=jsonl','_blank')" title="Download as JSONL">⬇ JSONL</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function downloadRangeCSV() {
+    const start = document.getElementById('dl-start').value;
+    const end = document.getElementById('dl-end').value;
+    const params = new URLSearchParams({ format: 'csv' });
+    if (start) params.set('startDate', start + 'T00:00:00.000Z');
+    if (end) params.set('endDate', end + 'T23:59:59.999Z');
+    window.open(`/api/governance/logs/export?${params}`, '_blank');
+  }
+
+  function downloadRangeJSONL() {
+    const start = document.getElementById('dl-start').value;
+    const end = document.getElementById('dl-end').value;
+    const params = new URLSearchParams({ format: 'jsonl' });
+    if (start) params.set('startDate', start + 'T00:00:00.000Z');
+    if (end) params.set('endDate', end + 'T23:59:59.999Z');
+    window.open(`/api/governance/logs/export?${params}`, '_blank');
   }
 
   function showAuditDetail(idx) {
