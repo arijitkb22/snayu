@@ -179,6 +179,7 @@ export function governedExecute(executeFn) {
       connectionName: meta.connectionName || connectionId,
       callerClient: meta.callerClient || undefined,
       callerVersion: meta.callerVersion || undefined,
+      sessionId: meta.sessionId || undefined,
       inputSummary,
     };
 

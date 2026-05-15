@@ -615,6 +615,62 @@ app.post("/api/governance/toggle", (req, res) => {
   res.json({ enabled: isGovernanceEnabled() });
 });
 
+// ─── Traces — group audit entries into sessions ────────────────────────────
+app.get("/api/governance/traces", (req, res) => {
+  const { days = 2, limit = 50 } = req.query;
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - Number(days));
+  const { entries } = queryAuditLogs({ startDate: startDate.toISOString(), limit: 1000 });
+
+  // Group by sessionId — entries with no sessionId get their own "anonymous" group by timestamp proximity
+  const sessionMap = new Map();
+  let anonCounter = 0;
+
+  for (const e of entries) {
+    const sid = e.sessionId || `anon_${anonCounter++}`;
+    if (!sessionMap.has(sid)) {
+      sessionMap.set(sid, {
+        sessionId: sid,
+        anonymous: !e.sessionId,
+        callerClient: e.callerClient,
+        callerVersion: e.callerVersion,
+        startTime: e.timestamp,
+        endTime: e.timestamp,
+        tools: [],
+        totalTokens: 0,
+        totalCost: 0,
+        totalDuration: 0,
+        errorCount: 0,
+        blockedCount: 0,
+        services: new Set(),
+      });
+    }
+    const s = sessionMap.get(sid);
+    s.tools.push(e);
+    s.endTime = e.timestamp > s.endTime ? e.timestamp : s.endTime;
+    s.totalTokens += e.totalTokens || 0;
+    s.totalCost += e.estimatedCost || 0;
+    s.totalDuration += e.durationMs || 0;
+    if (e.error || e.blocked) s.errorCount++;
+    if (e.blocked) s.blockedCount++;
+    if (e.service) s.services.add(e.service);
+  }
+
+  // Serialize and sort by most recent first
+  const traces = Array.from(sessionMap.values())
+    .map(s => ({
+      ...s,
+      services: Array.from(s.services),
+      totalCost: Number(s.totalCost.toFixed(6)),
+      wallTimeMs: new Date(s.endTime) - new Date(s.startTime),
+      toolCount: s.tools.length,
+    }))
+    .sort((a, b) => b.startTime.localeCompare(a.startTime))
+    .slice(0, Number(limit));
+
+  res.json({ traces, total: traces.length });
+});
+
 app.get("/api/governance/logs", (req, res) => {
   const { startDate, endDate, toolName, agentId, connectionId, blocked, search, limit, offset } = req.query;
   const logs = queryAuditLogs({ startDate, endDate, toolName, agentId, connectionId, blocked: blocked === "true" ? true : undefined, search, limit: Number(limit) || 100, offset: Number(offset) || 0 });

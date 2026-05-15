@@ -569,6 +569,7 @@ async function registerDynamicTools() {
           return executeTool(tool.name, params, {
             callerClient: client?.name,
             callerVersion: client?.version,
+            sessionId: mcpSessionId,
           });
         }
       );
@@ -813,6 +814,9 @@ server.tool(
 // ─── Start ────────────────────────────────────────────────────────────────────
 // Client info captured after MCP handshake
 let mcpClientInfo = null;
+// Session ID — unique per MCP process lifetime (one IDE connection = one session)
+import crypto from "crypto";
+const mcpSessionId = `ses_${crypto.randomBytes(8).toString("hex")}`;
 
 async function main() {
   console.error("[snayu] Starting MCP server...");
