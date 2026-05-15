@@ -75,6 +75,7 @@ import {
   queryAuditLogs,
   exportAuditCSV,
   cleanupLogs,
+  registerSseClient,
   getPolicies,
   addPolicy,
   updatePolicy,
@@ -609,6 +610,27 @@ app.get("/mcp/agents/:agentId/config", (req, res) => {
 
 app.get("/api/governance/stats", (req, res) => {
   res.json({ enabled: isGovernanceEnabled(), stats: getGovernanceStats(), rateLimits: getBucketStats() });
+});
+
+// ─── SSE Live Feed ────────────────────────────────────────────────────────────
+app.get("/api/governance/live", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no"); // disable nginx buffering
+  res.flushHeaders();
+
+  // Send a heartbeat comment every 15s to keep connection alive
+  const heartbeat = setInterval(() => {
+    try { res.write(": heartbeat\n\n"); } catch { clearInterval(heartbeat); }
+  }, 15_000);
+
+  res.on("close", () => clearInterval(heartbeat));
+  registerSseClient(res);
+
+  // Send current stats immediately on connect
+  const stats = getGovernanceStats();
+  res.write(`event: connected\ndata: ${JSON.stringify({ stats })}\n\n`);
 });
 
 app.post("/api/governance/toggle", (req, res) => {

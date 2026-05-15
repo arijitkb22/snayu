@@ -301,7 +301,7 @@ export function governedExecute(executeFn) {
 export { getStats } from "./audit-log.js";
 export { getPolicies, addPolicy, updatePolicy, deletePolicy, resetPolicies } from "./policy-engine.js";
 export { getBucketStats, resetBucket } from "./rate-limiter.js";
-export { queryAuditLogs, exportAuditCSV, cleanupLogs } from "./audit-log.js";
+export { queryAuditLogs, exportAuditCSV, cleanupLogs, registerSseClient } from "./audit-log.js";
 export { scan, redact } from "./guardrails.js";
 export { PATTERNS } from "./patterns.js";
 export { scanInput as scanPromptInjection, scanOutput as scanOutputLeak, INJECTION_PATTERNS } from "./prompt-guard.js";

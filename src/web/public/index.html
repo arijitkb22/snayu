@@ -604,6 +604,10 @@
       <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div><h1>🛡️ Governance</h1><p>Audit logs, security policies, rate limits — full control over every AI tool call.</p></div>
         <div style="display:flex;gap:8px;align-items:center;">
+          <div style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;background:var(--surface);border:1px solid var(--border);">
+            <span id="live-dot" style="width:8px;height:8px;border-radius:50%;background:#94a3b8;display:inline-block;transition:all .3s;"></span>
+            <span id="live-label" style="font-size:11px;font-weight:600;color:#94a3b8;">Connecting…</span>
+          </div>
           <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer;">
             <input type="checkbox" id="gov-toggle" checked onchange="toggleGovernance(this.checked)"> Enabled
           </label>
@@ -1889,6 +1893,8 @@
     document.getElementById('prompt-modal').addEventListener('mousedown', (e) => { if (e.target.id === 'prompt-modal') closePromptModal(); });
     try { catalog = await api('/catalog'); } catch (_) { catalog = {}; }
     navigate('dashboard');
+    // Start SSE live feed
+    startLiveFeed();
     // Show welcome on first visit
     if (!localStorage.getItem('snayu-toured')) showWelcome();
   })();
@@ -2405,6 +2411,115 @@
         </div>`;
       }
     } catch(e) { el.innerHTML = `<div style="color:#ef4444;">Error: ${e.message}</div>`; }
+  }
+
+  // ─── SSE Live Feed ────────────────────────────────────────────────────────
+  let _sseSource = null;
+  let _liveIndicator = null;
+
+  function startLiveFeed() {
+    if (_sseSource) _sseSource.close();
+
+    _sseSource = new EventSource('/api/governance/live');
+
+    _sseSource.addEventListener('connected', (e) => {
+      setLiveStatus('live');
+      const d = JSON.parse(e.data);
+      if (d.stats) applyStatsUpdate(d.stats);
+    });
+
+    // New audit entry — prepend to audit log table if on governance page
+    _sseSource.addEventListener('audit', (e) => {
+      const entry = JSON.parse(e.data);
+      flashLiveIndicator();
+
+      // Prepend to audit table if visible
+      const logEl = document.getElementById('gov-logs');
+      if (logEl && window._auditLogs) {
+        window._auditLogs.unshift(entry);
+        // Re-render only the first row efficiently
+        const idx = 0;
+        const existingTable = logEl.querySelector('table');
+        if (existingTable) {
+          const tbody = existingTable.querySelector('tbody');
+          if (tbody) {
+            const tr = buildAuditRow(entry, idx);
+            tbody.insertAdjacentHTML('afterbegin', tr);
+            // Flash the new row
+            const newRow = tbody.firstElementChild;
+            if (newRow) {
+              newRow.style.background = 'var(--accent)22';
+              setTimeout(() => { newRow.style.background = ''; newRow.style.transition = 'background 1s'; }, 1500);
+            }
+          }
+        }
+      }
+
+      // Update traces if visible
+      const tracesEl = document.getElementById('traces-list');
+      if (tracesEl && document.getElementById('page-traces')?.classList.contains('active')) {
+        loadTraces();
+      }
+    });
+
+    // Stats update — tick counters live
+    _sseSource.addEventListener('stats', (e) => {
+      const s = JSON.parse(e.data);
+      applyStatsUpdate(s);
+    });
+
+    _sseSource.onerror = () => {
+      setLiveStatus('reconnecting');
+      setTimeout(startLiveFeed, 5000);
+    };
+  }
+
+  function applyStatsUpdate(s) {
+    const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+    el('gov-total', s.totalCalls || 0);
+    el('gov-blocked', s.totalBlocked || 0);
+    el('gov-errors', s.totalErrors || 0);
+    const tok = s.totalTokens || 0;
+    el('gov-tokens', tok >= 1000000 ? (tok/1000000).toFixed(1)+'M' : tok >= 1000 ? (tok/1000).toFixed(1)+'K' : tok);
+    const cost = s.totalEstimatedCost || 0;
+    el('gov-cost', cost >= 1 ? '$'+cost.toFixed(2) : cost > 0 ? '$'+cost.toFixed(4) : '$0.00');
+  }
+
+  function flashLiveIndicator() {
+    const dot = document.getElementById('live-dot');
+    if (!dot) return;
+    dot.style.background = '#22c55e';
+    dot.style.transform = 'scale(1.5)';
+    setTimeout(() => { dot.style.transform = 'scale(1)'; }, 300);
+  }
+
+  function setLiveStatus(status) {
+    const dot = document.getElementById('live-dot');
+    const label = document.getElementById('live-label');
+    if (!dot || !label) return;
+    if (status === 'live') {
+      dot.style.background = '#22c55e';
+      label.textContent = 'Live';
+      label.style.color = '#22c55e';
+    } else if (status === 'reconnecting') {
+      dot.style.background = '#f59e0b';
+      label.textContent = 'Reconnecting…';
+      label.style.color = '#f59e0b';
+    }
+  }
+
+  function buildAuditRow(e, idx) {
+    const statusColor = e.blocked ? '#ef4444' : e.success ? '#22c55e' : '#ef4444';
+    const statusText  = e.blocked ? 'BLOCKED' : e.success ? 'OK' : 'ERR';
+    const dur = e.durationMs != null ? (e.durationMs < 1000 ? e.durationMs+'ms' : (e.durationMs/1000).toFixed(1)+'s') : '—';
+    return `<tr style="transition:background .5s;">
+      <td>${new Date(e.timestamp).toLocaleTimeString()}</td>
+      <td>${e.service||e.connectionId||'—'}</td>
+      <td>${e.action||'—'}</td>
+      <td>${dur}</td>
+      <td><span style="color:${statusColor};font-weight:600;">${statusText}</span></td>
+      <td><button class="btn btn-sm" style="padding:2px 8px;font-size:10px;" onclick="showAuditDetail(${idx})">Details</button></td>
+    </tr>`;
   }
 
   // ─── Security Report ────────────────────────────────────────────────────

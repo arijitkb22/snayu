@@ -20,6 +20,23 @@ const STATS_FILE = path.join(__dirname, "../../data/governance/stats.json");
 // Ensure directories exist
 if (!fs.existsSync(AUDIT_DIR)) fs.mkdirSync(AUDIT_DIR, { recursive: true });
 
+// ─── SSE Live Feed ────────────────────────────────────────────────────────────
+// Web server registers itself here so audit entries push to connected browsers.
+const sseClients = new Set();
+
+export function registerSseClient(res) {
+  sseClients.add(res);
+  res.on("close", () => sseClients.delete(res));
+}
+
+function emitSseEvent(eventName, data) {
+  if (sseClients.size === 0) return;
+  const payload = `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const client of sseClients) {
+    try { client.write(payload); } catch { sseClients.delete(client); }
+  }
+}
+
 // ─── In-memory stats (rebuilt from logs on startup, flushed periodically) ────
 let stats = rebuildStatsFromLogs();
 let statsDirty = true; // mark dirty so startup rebuild is persisted immediately
@@ -167,6 +184,16 @@ export function writeAuditLog(entry) {
   
   stats.byDay[day] = (stats.byDay[day] || 0) + 1;
   statsDirty = true;
+
+  // Push to any connected SSE dashboard clients in real-time
+  emitSseEvent("audit", record);
+  emitSseEvent("stats", {
+    totalCalls: stats.totalCalls,
+    totalBlocked: stats.totalBlocked,
+    totalErrors: stats.totalErrors,
+    totalTokens: stats.totalTokens || 0,
+    totalEstimatedCost: stats.totalEstimatedCost || 0,
+  });
 
   return record;
 }
