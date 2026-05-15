@@ -185,7 +185,7 @@ export function queryAuditLogs({
   limit = 100,
   offset = 0,
 } = {}) {
-  const start = startDate ? new Date(startDate) : new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const start = startDate ? new Date(startDate) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // default: last 7 days
   const end = endDate ? new Date(endDate) : new Date();
   
   // Collect matching log files
@@ -197,10 +197,12 @@ export function queryAuditLogs({
 
   for (const file of files) {
     const fileDate = file.replace("audit-", "").replace(".jsonl", "");
-    if (fileDate < start.toISOString().slice(0, 10)) continue;
+    if (fileDate < start.toISOString().slice(0, 10)) break; // files are sorted desc, done
     if (fileDate > end.toISOString().slice(0, 10)) continue;
 
-    const content = fs.readFileSync(path.join(AUDIT_DIR, file), "utf-8");
+    let content;
+    try { content = fs.readFileSync(path.join(AUDIT_DIR, file), "utf-8"); }
+    catch { continue; }
     const lines = content.trim().split("\n").filter(Boolean);
     
     for (let i = lines.length - 1; i >= 0; i--) { // newest first
@@ -218,10 +220,9 @@ export function queryAuditLogs({
         if (ts < start || ts > end) continue;
         
         results.push(entry);
-        if (results.length >= offset + limit) break;
       } catch { /* skip malformed lines */ }
     }
-    if (results.length >= offset + limit) break;
+    if (results.length >= offset + limit) break; // have enough, stop reading more files
   }
 
   return {
