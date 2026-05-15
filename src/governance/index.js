@@ -9,8 +9,15 @@ import { checkRate } from "./rate-limiter.js";
 import { scanArgs as scanPromptInjection, scanOutput as scanOutputLeak } from "./prompt-guard.js";
 import { fireAlert } from "./alerts.js";
 import { queueApproval } from "./approvals.js";
+import { callHook } from "../core/plugin-registry.js";
 
 let enabled = true;
+
+// ─── Internal audit writer that also fires plugin hooks ──────────────────────
+function auditAndNotify(entry) {
+  writeAuditLog(entry);
+  callHook("afterAudit", entry).catch(() => {}); // non-blocking, never throws
+}
 
 // ─── Summarization helpers ───────────────────────────────────────────────────
 
@@ -191,7 +198,7 @@ export function governedExecute(executeFn) {
         entry.blockReason = inputPolicy.reason;
         entry.policyId = inputPolicy.policyId;
         entry.durationMs = Date.now() - start;
-        writeAuditLog(entry);
+        auditAndNotify(entry);
         fireAlert("policy_block", { toolName, reason: inputPolicy.reason, agentId, connectionId });
         return { error: `Blocked by policy: ${inputPolicy.reason}`, policyId: inputPolicy.policyId };
       }
@@ -202,7 +209,7 @@ export function governedExecute(executeFn) {
         entry.blocked = true;
         entry.blockReason = `Awaiting approval: ${pending.id}`;
         entry.durationMs = Date.now() - start;
-        writeAuditLog(entry);
+        auditAndNotify(entry);
         return { error: `Approval required: ${inputPolicy.reason}`, approvalId: pending.id, status: "pending" };
       }
 
@@ -213,7 +220,7 @@ export function governedExecute(executeFn) {
         entry.blockReason = `Prompt injection detected (score: ${injectionScan.score})`;
         entry.promptInjection = injectionScan.findings.map(f => f.name);
         entry.durationMs = Date.now() - start;
-        writeAuditLog(entry);
+        auditAndNotify(entry);
         fireAlert("prompt_injection", { toolName, reason: entry.blockReason, agentId, connectionId, score: injectionScan.score, findings: injectionScan.findings });
         return { error: `Blocked: Prompt injection detected`, score: injectionScan.score, findings: injectionScan.findings.map(f => f.name) };
       }
@@ -233,7 +240,7 @@ export function governedExecute(executeFn) {
         entry.blocked = true;
         entry.blockReason = `Rate limit exceeded — retry in ${rate.retryAfterMs}ms`;
         entry.durationMs = Date.now() - start;
-        writeAuditLog(entry);
+        auditAndNotify(entry);
         fireAlert("rate_limited", { toolName, reason: entry.blockReason, agentId, connectionId });
         return { error: entry.blockReason, retryAfterMs: rate.retryAfterMs };
       }
@@ -278,7 +285,7 @@ export function governedExecute(executeFn) {
       entry.estimatedCost = estimateCost(inputTokens, outputTokens, meta.model);
       if (meta.model) entry.model = meta.model;
 
-      writeAuditLog(entry);
+      auditAndNotify(entry);
 
       return finalResult;
 
@@ -290,7 +297,7 @@ export function governedExecute(executeFn) {
       entry.outputTokens = estimateTokens(err.message);
       entry.totalTokens = (entry.inputTokens || 0) + (entry.outputTokens || 0);
       entry.estimatedCost = estimateCost(entry.inputTokens, entry.outputTokens, meta.model);
-      writeAuditLog(entry);
+      auditAndNotify(entry);
       fireAlert("error", { toolName, reason: err.message, agentId, connectionId });
       throw err;
     }
@@ -307,3 +314,4 @@ export { PATTERNS } from "./patterns.js";
 export { scanInput as scanPromptInjection, scanOutput as scanOutputLeak, INJECTION_PATTERNS } from "./prompt-guard.js";
 export { fireAlert, getAlertConfig, updateAlertConfig, updateAlertRule, getRecentAlerts, clearRecentAlerts } from "./alerts.js";
 export { queueApproval, approveRequest, rejectRequest, getApprovals, getPendingCount } from "./approvals.js";
+export { registerPlugin, unregisterPlugin, listPlugins } from "../core/plugin-registry.js";

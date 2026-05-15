@@ -1,6 +1,6 @@
 {
   "name": "@arijitkb22/snayu",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Snayu (স্নায়ু) — the nervous system for your AI agents. Connect once, use everywhere. A single MCP server that bridges all your services to all your AI agents.",
   "type": "module",
   "main": "src/index.js",
@@ -18,7 +18,7 @@
     "tools"
   ],
   "author": "Arijit Bera",
-  "license": "MIT",
+  "license": "AGPL-3.0",
   "homepage": "https://github.com/arijitkb22/snayu#readme",
   "repository": {
     "type": "git",
@@ -36,7 +36,9 @@
     "data/agent-registry.json",
     "data/agents.json",
     "mcp.json",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "COMMERCIAL_LICENSE.md"
   ],
   "scripts": {
     "start": "node src/index.js",
